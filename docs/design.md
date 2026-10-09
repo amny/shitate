@@ -248,12 +248,13 @@ export function formatRef(labels: Labels, targetId: string): string | null;
 | 自己形式HTML | `<script type="application/json" id="doc-data">` がある | JSONを取り出し → zod検証 → `migrate` → `DocumentState` と `Theme` を復元 |
 | 外部HTML | 拡張子 `.html` で上記なし | DOMPurifyでサニタイズ → `generateJSON(html, extensions)` |
 | Markdown | 拡張子 `.md` | markdown-it（GFM表）でHTML化 → 外部HTMLと同じ経路 |
-| TipTap JSON | 拡張子 `.json` | zod検証（`type: "doc"`） |
+| TipTap JSON | 拡張子 `.json` | zod検証（`type: "doc"`） → 段落内の画像を段落の外に出す → TipTapスキーマで検証 |
 
 - 外部HTML／Markdown／JSONから読んだ場合、`meta` と `revisions` は空で初期化し、テーマは現在の選択を使う。
 - `<figure><img><figcaption>` は parseHTML で `figure` に変換する。表のキャプションは、解析の前に `div.table-figure > div.table-caption + table` の形に整えてから `tableFigure` に変換する（対象：`<table><caption>…</caption>…</table>`、`<figure><table>…</table><figcaption>…</figcaption></figure>`）。1つの要素から2つのノードは作れないため。
 - エクスポートが差し込んだ番号（`span.heading-number` / `span.caption-number`）は、外部HTMLとしての読み込み時と貼り付け時に取り除く（番号が本文の文字として入らないようにするため）。
 - 同様に、エクスポートが `meta` / `revisions` から生成した表紙（`.doc-cover`）と改訂履歴（`.doc-revisions`）、テーマ設定値から生成したヘッダー（`header.doc-header`）・フッター（`footer.doc-footer`）も取り除く（2-6・2-7）。本文に取り込むと、表紙のタイトルが見出しに、改訂履歴が本文の表になってしまうため。
+- TipTap JSONの `paragraph` 直下の `image` は、段落の外（同じ親の中の兄弟）に出す（`liftImagesFromParagraphs`）。画像はブロックノード（§5.1）で、段落の content は `inline*` のため、そのままではスキーマ違反になる。AIや他のTipTap環境は画像をインラインとして段落内に出力しがちなため、エラーにせず補正する。前後の文字は段落を分けて残し（属性は元の段落と同じ）、空になった段落は捨てる。分割した端の `hardBreak` は落とす。先頭に段落が必要な `listItem` / `taskItem` では、先頭の段落が画像だけの場合に空の段落を残す。HTML／Markdownは `generateJSON` が同様に補正するため対象外。
 - 自己形式HTMLの埋め込みテーマIDが手元に無い場合は、同梱の `theme` をユーザーテーマとして登録する。
 
 ---
