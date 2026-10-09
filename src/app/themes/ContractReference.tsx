@@ -26,6 +26,11 @@ const CLASS_GROUPS: readonly { title: string; classes: string; note: string }[] 
       '.doc-body, .heading-number, figure, figcaption, .table-figure, .table-figure.is-landscape, .table-caption, .caption-number, .xref',
     note: 'h1〜h6、p、table などの要素セレクタも .doc の下で使えます',
   },
+  {
+    title: 'コードのハイライト',
+    classes: '.hljs-keyword, .hljs-string, .hljs-comment, .hljs-title など（hljs- で始まるクラス）',
+    note: 'コードブロックの言語に応じて付きます。クラス名は highlight.js と同じです',
+  },
 ];
 
 const VARIABLE_NOTES: Readonly<Record<string, string>> = {

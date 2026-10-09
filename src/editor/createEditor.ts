@@ -4,6 +4,7 @@ import Image from '@tiptap/extension-image';
 import { Table, TableRow } from '@tiptap/extension-table';
 import StarterKit from '@tiptap/starter-kit';
 import { Captions } from './extensions/captions';
+import { HighlightedCodeBlock } from './extensions/codeBlock';
 import { CrossRef } from './extensions/crossRef';
 import { Figcaption, Figure } from './extensions/figure';
 import { LabelsExtension } from './extensions/labels';
@@ -51,6 +52,8 @@ export function createExtensions(): AnyExtension[] {
     StarterKit.configure({
       // Replaced by TocDocument (`toc? block+`).
       document: false,
+      // Replaced by HighlightedCodeBlock (syntax highlighting, §5.4).
+      codeBlock: false,
       link: {
         openOnClick: false,
         autolink: true,
@@ -71,6 +74,7 @@ export function createExtensions(): AnyExtension[] {
         alwaysPreserveAspectRatio: true,
       },
     }),
+    HighlightedCodeBlock,
     Table.configure({ resizable: true }),
     TableRow,
     RestrictedTableHeader,

@@ -125,6 +125,74 @@
   border-radius: 3px;
 }
 
+/* Syntax highlighting of code blocks (hljs-* classes, design.md §5.7) */
+.doc .doc-body .hljs-comment,
+.doc .doc-body .hljs-quote {
+  color: #6e7781;
+  font-style: italic;
+}
+
+.doc .doc-body .hljs-keyword,
+.doc .doc-body .hljs-doctag,
+.doc .doc-body .hljs-template-tag,
+.doc .doc-body .hljs-type {
+  color: #b42339;
+}
+
+.doc .doc-body .hljs-title,
+.doc .doc-body .hljs-section {
+  color: #6f42c1;
+}
+
+.doc .doc-body .hljs-attr,
+.doc .doc-body .hljs-attribute,
+.doc .doc-body .hljs-literal,
+.doc .doc-body .hljs-meta,
+.doc .doc-body .hljs-number,
+.doc .doc-body .hljs-operator,
+.doc .doc-body .hljs-variable,
+.doc .doc-body .hljs-selector-attr,
+.doc .doc-body .hljs-selector-class,
+.doc .doc-body .hljs-selector-id {
+  color: #0550ae;
+}
+
+.doc .doc-body .hljs-string,
+.doc .doc-body .hljs-regexp {
+  color: #0a3069;
+}
+
+.doc .doc-body .hljs-built_in,
+.doc .doc-body .hljs-symbol,
+.doc .doc-body .hljs-bullet {
+  color: #953800;
+}
+
+.doc .doc-body .hljs-name,
+.doc .doc-body .hljs-tag,
+.doc .doc-body .hljs-selector-tag,
+.doc .doc-body .hljs-selector-pseudo {
+  color: #116329;
+}
+
+.doc .doc-body .hljs-addition {
+  color: #116329;
+  background: #e6f7ea;
+}
+
+.doc .doc-body .hljs-deletion {
+  color: #82071e;
+  background: #fdecee;
+}
+
+.doc .doc-body .hljs-emphasis {
+  font-style: italic;
+}
+
+.doc .doc-body .hljs-strong {
+  font-weight: bold;
+}
+
 .doc .doc-body hr {
   margin: 1.8em 0;
   border: 0;

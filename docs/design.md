@@ -32,6 +32,7 @@
 | エディター | TipTap v3（`@tiptap/react`、`@tiptap/starter-kit`、Table系、Image） | 導入時に最新版を確認する |
 | Markdown変換 | markdown-it（GFM表対応） | Markdown → HTML → TipTap JSON の2段変換にし、TipTapのMarkdown拡張の状況に依存しない |
 | HTMLサニタイズ | DOMPurify | 外部HTML読込時 |
+| シンタックスハイライト | lowlight（highlight.js の文法）、`@tiptap/extension-code-block-lowlight` | コードブロック（§5.7）。対応言語だけを登録する |
 | スキーマ検証 | zod | 埋め込みJSONの検証 |
 | IndexedDB | idb | |
 | ID生成 | nanoid | |
@@ -64,12 +65,14 @@ src/
       tableCellGuard.ts   # セル内の見出し・図・表キャプションを除去（§5.2）
       crossRef.ts
       toc.ts
+      codeBlock.ts        # シンタックスハイライトと言語選択（§5.7）
     nodeviews/            # CrossRef、Toc、Figure等のReact NodeView
     ui/                   # 表操作メニュー、参照挿入ダイアログ等
     editor-ui.css         # 編集UI用CSS（テーマとは別）
   core/                   # 純粋TS（Reactに依存しない）
     model/                # 型定義とzodスキーマ
     labels/               # computeLabels
+    highlight/            # コードブロックの対応言語と字句分割（§5.7）
     import/               # markdown / html / json / 自己形式HTML の読込
     export/               # エクスポートHTMLの組み立て
     theme/                # テーマのCSS変数生成、ビルトインテーマ定義、テーマ契約、編集用の操作
@@ -162,7 +165,8 @@ export interface EmbeddedData {
 | ノード | 種別 | content / 属性 | 備考 |
 |---|---|---|---|
 | heading | block | `inline*` / `level`, `id`, `numbered`(既定true) | StarterKitのHeadingを拡張 |
-| paragraph, bulletList, orderedList, blockquote, codeBlock, horizontalRule | block | StarterKit既定 | |
+| paragraph, bulletList, orderedList, blockquote, horizontalRule | block | StarterKit既定 | |
+| codeBlock | block | `text*` / `language`(既定null) | CodeBlockLowlightを拡張（§5.7） |
 | image | block | `src`, `alt`, `title`, `width`, `height` | block画像で統一する（inlineにしない）。`width` / `height` はリサイズ後の表示サイズ（px、未指定は `null`） |
 | figure | block | `image figcaption` / `id` | 本文の図。図番号の対象 |
 | figcaption | block | `inline*` | 図のキャプション（画像の下） |
@@ -237,6 +241,15 @@ export function formatRef(labels: Labels, targetId: string): string | null;
 - 一覧は絞り込みの入力欄付き。矢印キーで選び、Enter（`isComposing` を判定）で挿入、Escで閉じる。
 - `crossRef` は `<span class="xref" data-target-id>` で表し、エクスポートでは `<a class="xref" href="#id">2.1節</a>`（参照先なしは `<span class="xref">参照先なし</span>`）を出力する。読み込み時は `a.xref[href^="#"]` も `crossRef` として取り込む。
 
+### 5.7 コードブロックのシンタックスハイライト
+
+- 文書に保存するのは `codeBlock.language` だけ。色付けはエディターではデコレーション、エクスポートでは出力時に計算する（番号と同じく、文書には書き込まない）。
+- 対応言語は `src/core/highlight/languages.ts` の `CODE_LANGUAGES` に限る：TypeScript / JavaScript / JSON / HTML(XML) / CSS / SQL / Bash / Python / Java / C# / Go / PHP / YAML / Markdown / Diff。各言語は `id`（highlight.js の文法名）と別名（`ts`、`html`、`sh` など）を持つ。
+- `language` は `id` でも別名でもよい（大文字小文字は区別しない）。空・未対応の値は色を付けない。自動判定はしない（誤った色付けが納品物に残るため）。未対応の値も文書には残す。
+- 字句分割は `core/highlight` の lowlight に一元化する。エディターは CodeBlockLowlight に、別名の解決と自動判定の無効化をした lowlight を渡す。エクスポートは `highlightTokens` で同じ字句に分割する。入れ子の要素はクラスを連結した平坦な `<span class="hljs-…">` にする（エディターのデコレーションと同じ形）。
+- 言語の選択：コードブロックのNodeView（`<pre class="code-block-view">`）の右上に `<select>` を置く。先頭は「テキスト」（`language: null`）。別名はその言語を選択状態で表示し、未対応の値は「xxx（ハイライトなし）」の項目を追加して表示する。編集UIなのでエクスポートには出ない。
+- テーマは `hljs-` で始まるクラスで色を指定する（§8.2）。
+
 ---
 
 ## 6. インポート
@@ -267,6 +280,7 @@ export function formatRef(labels: Labels, targetId: string): string | null;
 
 1. `computeLabels(state.doc)` を計算する。
 2. 本文を `generateHTML` でHTMLにする（スキーマの `renderHTML` は番号を出力しない）。
+   - 対応言語のコードブロックは、手順3の後に `core/export/highlightCode.ts` の `highlightCodeBlocks` で中身を `<span class="hljs-…">` に置き換える（§5.7）。コードのテキストはエスケープして出力する。
 3. 本文HTMLを DOMParser で解析し、`id` をもとに解決済みの値を差し込む（番号用の属性をスキーマに持たせると、エディターのJSONに余分な属性が入り、`renderHTML` の hole の制約で本文を余分な要素で包む必要があるため。2-2で変更）。
    - 見出し：先頭に `<span class="heading-number">2.1</span>`（採番しない見出し・H6には付けない）
    - 図・表：キャプションの先頭に番号（2-3）
@@ -349,6 +363,7 @@ export function formatRef(labels: Labels, targetId: string): string | null;
 | 改訂履歴 | `.doc-revisions` |
 | 目次 | `.doc-toc`, `.toc-title`, `.toc-item`, `.toc-level-1`〜`.toc-level-5`, `.toc-number` |
 | 本文 | `.doc-body`, `.heading-number`, `figure`, `figcaption`, `.table-figure`, `.table-figure.is-landscape`, `.table-caption`, `.caption-number`, `.xref` |
+| コードのハイライト | `hljs-` で始まるクラス（`.hljs-keyword`、`.hljs-string`、`.hljs-comment` など。highlight.js のクラス名。§5.7） |
 | CSS変数 | `--header-logo`, `--copyright`, `--base-font-size` |
 
 - テーマCSSの `@page` には `size` と `margin` を書かない（ページ設定から生成する。§10.1）。余白ボックスや `:first` の指定は書いてよい。
