@@ -2,6 +2,7 @@ import { getSchema } from '@tiptap/core';
 import type { Extensions } from '@tiptap/core';
 import { docRootSchema } from '../model';
 import type { DocRoot } from '../model';
+import { liftImagesFromParagraphs } from './liftImages';
 
 export type JsonImportResult = { ok: true; doc: DocRoot } | { ok: false; error: string };
 
@@ -34,11 +35,12 @@ export function jsonToDoc(text: string, extensions: Extensions): JsonImportResul
   if (!root.success) {
     return { ok: false, error: 'TipTap JSON（"type": "doc" のオブジェクト）ではありません' };
   }
-  const schemaError = checkAgainstEditorSchema(root.data, extensions);
+  const doc = liftImagesFromParagraphs(root.data);
+  const schemaError = checkAgainstEditorSchema(doc, extensions);
   if (schemaError) {
     return { ok: false, error: schemaError };
   }
   // Normalize (fills default attributes) so it matches what the editor produces.
-  const normalized: unknown = getSchema(extensions).nodeFromJSON(root.data).toJSON();
+  const normalized: unknown = getSchema(extensions).nodeFromJSON(doc).toJSON();
   return { ok: true, doc: docRootSchema.parse(normalized) };
 }

@@ -440,6 +440,19 @@
   - 既存E2Eの変更：`header-footer.spec.ts`（`<script>` の数 → 埋め込みデータとビューアの2つで、注入が無いこと）、`pdf.spec.ts`（納品HTMLとPDF用HTMLの一致 → ビューア部分を除いて一致すること）。
   - 全E2Eを3回続けて実行したところ、1回だけ `pdf.spec.ts` の「turns pages and switches the view」が失敗した（2-9のメモと同じ既知の不安定なテスト。PDF用HTMLにはビューアを含めないので、今回の変更とは無関係と判断）。`pdf.spec.ts` を5回繰り返した実行（20件）はすべて成功した。
 
+### [x] 2-12 JSONインポート：段落内の画像の補正
+- 内容：§6。TipTap JSONの `paragraph` 直下にある `image` を段落の外に出してから検証する（画像はブロックノードのため、そのままではスキーマ違反で読み込めない）。
+- 受け入れ基準：
+  - `paragraph > image` を含むJSONを読み込める。画像の前後の文字は別の段落として残る
+  - リスト項目・表のセル・引用の中の段落でも同様に補正される
+  - 補正の不要なJSONは変わらない（既存のJSONインポートと往復テストが通る）
+- 依存：1-3
+- メモ：
+  - ユーザーの依頼で追加したタスク。依存パッケージの追加なし。
+  - 補正は `src/core/import/liftImages.ts` の `liftImagesFromParagraphs`（純粋関数）。`jsonToDoc` でスキーマ検証の前に呼ぶ。単体テストは `liftImages.test.ts`。
+  - 対象は `paragraph` のみ。`heading`・キャプション（`figcaption` / `tableCaption`）内の画像は従来どおりエラーになる。必要になれば別タスクにする。
+  - 段落から出した画像の `marks`（リンク等）はそのまま残すので、付いていればスキーマ検証でエラーになる。
+
 **Phase 2 完了条件：ページ番号付きの目次を持つ仕様書PDFを、任意のページサイズで出力できる。**
 
 ---
