@@ -30,7 +30,7 @@ export function buildPdfRequest(
 ): PdfRenderRequest {
   const state = collectDocumentState(editor);
   const request: PdfRenderRequest = {
-    html: buildExportHtml(state, theme, { extensions: createExtensions() }),
+    html: buildExportHtml(state, theme, { extensions: createExtensions(), imageViewer: false }),
     styleSheets: [
       PDF_BASE_CSS,
       buildPageCss(resolvePageSettings(theme.settings, state.settingsOverride)),

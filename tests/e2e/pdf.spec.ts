@@ -219,7 +219,12 @@ test('the delivered HTML is unchanged by the PDF preparation', async ({ page }) 
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'HTMLをエクスポート' }).click();
   const exported = readFileSync(await (await downloadPromise).path(), 'utf8');
-  // The space after heading numbers is added only for the PDF.
-  expect(exported).toBe(request?.html);
+  // The PDF gets the same HTML without the image viewer (design.md §7.3); the space after
+  // heading numbers is added only for the PDF.
+  const withoutViewer = exported
+    .replace(/<style id="image-viewer">[^]*?<\/style>\n/, '')
+    .replace(/<script>[^]*?<\/script>\n/, '');
+  expect(withoutViewer).not.toBe(exported);
+  expect(withoutViewer).toBe(request?.html);
   expect(exported).toMatch(/<span class="heading-number">1<\/span>はじめに/);
 });
