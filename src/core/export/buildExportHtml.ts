@@ -4,6 +4,7 @@ import { computeLabels } from '../labels';
 import { EMBEDDED_DATA_FORMAT, EMBEDDED_DATA_VERSION } from '../model';
 import type { DocumentState, EmbeddedData, Theme } from '../model';
 import { escapeHtml, escapeStyleContent, serializeJsonForScript } from './escape';
+import { IMAGE_VIEWER_CSS, IMAGE_VIEWER_SCRIPT, IMAGE_VIEWER_STYLE_ID } from './imageViewer';
 import { insertResolvedLabels } from './resolveLabels';
 import { resolvePageSettings } from '../pdf/pageCss';
 import { buildThemeVars, resolveHeaderFooter } from '../theme/themeVars';
@@ -13,6 +14,11 @@ import { renderTocNav, resolveTocDepth, splitToc } from './toc';
 export interface ExportOptions {
   /** The editor's extensions, so the body is rendered with the editor's schema. */
   extensions: Extensions;
+  /**
+   * Adds the image viewer (click to show an image at its natural size, §7.3).
+   * Off for the PDF, which is not interactive. Default: true.
+   */
+  imageViewer?: boolean;
 }
 
 export const EMBEDDED_DATA_ELEMENT_ID = 'doc-data';
@@ -31,7 +37,7 @@ export function createEmbeddedData(state: DocumentState, theme: Theme): Embedded
 export function buildExportHtml(
   state: DocumentState,
   theme: Theme,
-  { extensions }: ExportOptions,
+  { extensions, imageViewer = true }: ExportOptions,
 ): string {
   const data: EmbeddedData = {
     format: EMBEDDED_DATA_FORMAT,
@@ -63,6 +69,9 @@ export function buildExportHtml(
       }),
     )}</style>`,
     `<style id="theme">${escapeStyleContent(theme.css)}</style>`,
+    ...(imageViewer
+      ? [`<style id="${IMAGE_VIEWER_STYLE_ID}">${escapeStyleContent(IMAGE_VIEWER_CSS)}</style>`]
+      : []),
     '</head>',
     '<body>',
     '<div class="doc">',
@@ -77,6 +86,7 @@ export function buildExportHtml(
     ].filter((part) => part !== ''),
     '</div>',
     `<script type="application/json" id="${EMBEDDED_DATA_ELEMENT_ID}">${serializeJsonForScript(data)}</script>`,
+    ...(imageViewer ? [`<script>${IMAGE_VIEWER_SCRIPT}</script>`] : []),
     '</body>',
     '</html>',
     '',

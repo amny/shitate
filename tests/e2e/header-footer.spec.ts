@@ -76,7 +76,12 @@ test('a copyright with quotes does not break the export', async ({ page }) => {
 
   await page.setContent(html);
   await expect(page.locator('.doc-copyright')).toHaveText(copyright);
-  expect(await page.locator('script').count()).toBe(1);
+  // Only the embedded data and the image viewer: the copyright adds no script.
+  expect(await page.locator('script').evaluateAll((scripts) => scripts.map((s) => s.id))).toEqual([
+    'doc-data',
+    '',
+  ]);
+  expect(await page.locator('script:not([id])').textContent()).not.toContain('alert');
   const variable = await page.evaluate(() =>
     getComputedStyle(document.documentElement).getPropertyValue('--copyright').trim(),
   );

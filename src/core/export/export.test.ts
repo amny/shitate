@@ -8,6 +8,7 @@ import type { DocRoot, DocumentState, Theme } from '../model';
 import { getDefaultTheme } from '../theme/builtinThemes';
 import { buildExportHtml } from './buildExportHtml';
 import { toExportFileName } from './fileName';
+import { IMAGE_VIEWER_CSS, IMAGE_VIEWER_SCRIPT } from './imageViewer';
 
 const extensions = createExtensions();
 const theme = getDefaultTheme();
@@ -120,17 +121,22 @@ describe('buildExportHtml: escaping', () => {
 
   it('does not break the embedded JSON with </script> or <!--', () => {
     const plain = buildExportHtml(state, theme, { extensions });
-    expect(plain.match(/<\/script>/g)).toHaveLength(1);
+    // The embedded data and the image viewer.
+    expect(plain.match(/<\/script>/g)).toHaveLength(2);
     expect(plain).not.toContain('<!--');
     const result = reimport(plain);
     expect(result.ok && result.kind === 'embedded' && result.data.state).toEqual(state);
   });
 
   it('does not let theme CSS close the <style> element', () => {
-    // Two <style> elements: theme-vars and theme.
-    expect(html.match(/<\/style>/gi)).toHaveLength(2);
+    // Three <style> elements: theme-vars, theme and the image viewer.
+    expect(html.match(/<\/style>/gi)).toHaveLength(3);
     const dom = new DOMParser().parseFromString(html, 'text/html');
-    expect(dom.querySelectorAll('script')).toHaveLength(1);
+    expect([...dom.querySelectorAll('script')].map((script) => script.id)).toEqual([
+      'doc-data',
+      '',
+    ]);
+    expect(dom.querySelector('script:not([id])')?.textContent).toBe(IMAGE_VIEWER_SCRIPT);
   });
 
   it('shows the tricky text as text in the body', () => {
@@ -362,6 +368,53 @@ describe('buildExportHtml: resized images', () => {
   });
 });
 
+describe('buildExportHtml: image viewer', () => {
+  const state = createState(importDocument('basic.md', basicMd));
+
+  it('adds the viewer style and script without external references', () => {
+    const html = buildExportHtml(state, theme, { extensions });
+    const dom = new DOMParser().parseFromString(html, 'text/html');
+    expect(dom.querySelector('head > style#image-viewer')?.textContent).toBe(IMAGE_VIEWER_CSS);
+    const script = dom.querySelector('body > script:not([type])');
+    expect(script?.textContent).toBe(IMAGE_VIEWER_SCRIPT);
+    // It comes after the document, so the images exist when it runs.
+    expect(script?.previousElementSibling?.id).toBe('doc-data');
+    expect(IMAGE_VIEWER_SCRIPT).not.toMatch(/<\/script|<!--|https?:|import\(|fetch\(/i);
+    expect(IMAGE_VIEWER_CSS).not.toMatch(/<\/style|@import|url\(/i);
+  });
+
+  it('is left out when disabled (PDF)', () => {
+    const html = buildExportHtml(state, theme, { extensions, imageViewer: false });
+    const dom = new DOMParser().parseFromString(html, 'text/html');
+    expect(dom.querySelector('style#image-viewer')).toBeNull();
+    expect(dom.querySelectorAll('script')).toHaveLength(1);
+  });
+
+  it('does not change the embedded data or the body', () => {
+    const withViewer = buildExportHtml(state, theme, { extensions });
+    const without = buildExportHtml(state, theme, { extensions, imageViewer: false });
+    const bodyOf = (html: string) =>
+      new DOMParser().parseFromString(html, 'text/html').querySelector('.doc')?.outerHTML;
+    expect(bodyOf(withViewer)).toBe(bodyOf(without));
+    const result = reimport(withViewer);
+    expect(result.ok && result.kind === 'embedded' && result.data.state).toEqual(state);
+  });
+
+  it('is not taken into the body when imported as external HTML', () => {
+    const html = buildExportHtml(state, theme, { extensions });
+    const dom = new DOMParser().parseFromString(html, 'text/html');
+    dom.getElementById('doc-data')?.remove();
+    const result = importFile(
+      { name: 'external.html', text: dom.documentElement.outerHTML },
+      { extensions },
+    );
+    expect(result.ok && result.kind).toBe('document');
+    expect(JSON.stringify(result.ok && result.kind === 'document' && result.doc)).not.toMatch(
+      /doc-image-viewer|showModal/,
+    );
+  });
+});
+
 describe('buildExportHtml: cross references', () => {
   const state = createState({
     type: 'doc',
@@ -567,8 +620,12 @@ describe('buildExportHtml: header and footer', () => {
   it('puts the values into theme-vars without breaking the CSS or the page', () => {
     const vars = dom.querySelector('style#theme-vars')?.textContent ?? '';
     expect(vars.startsWith(':root{--header-logo:url("data:image/png;base64,')).toBe(true);
-    expect(dom.querySelectorAll('script')).toHaveLength(1);
-    expect(dom.querySelectorAll('style')).toHaveLength(2);
+    expect(dom.querySelectorAll('script')).toHaveLength(2);
+    expect([...dom.querySelectorAll('style')].map((style) => style.id)).toEqual([
+      'theme-vars',
+      'theme',
+      'image-viewer',
+    ]);
     const style = document.createElement('style');
     style.textContent = vars;
     document.head.append(style);
