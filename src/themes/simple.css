@@ -1,0 +1,381 @@
+/*
+ * Built-in theme "simple" (シンプル): Gothic only, few rules.
+ * Follows the theme contract in src/themes/README.md.
+ */
+
+.doc,
+.doc * {
+  box-sizing: border-box;
+}
+
+.doc {
+  max-width: 54em;
+  margin: 0 auto;
+  padding: 3.5em 4.5em;
+  background: #ffffff;
+  color: #222222;
+  font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'BIZ UDPGothic', Meiryo, sans-serif;
+  font-size: var(--base-font-size, 10.5pt);
+  line-height: 1.8;
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 640px) {
+  .doc {
+    padding: 2em 1.25em;
+  }
+}
+
+/* Headings */
+.doc .doc-body h1,
+.doc .doc-body h2,
+.doc .doc-body h3,
+.doc .doc-body h4,
+.doc .doc-body h5,
+.doc .doc-body h6 {
+  margin: 1.8em 0 0.6em;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.doc .doc-body > :first-child {
+  margin-top: 0;
+}
+
+.doc .doc-body h1 {
+  font-size: 1.6em;
+}
+
+.doc .doc-body h2 {
+  font-size: 1.3em;
+}
+
+.doc .doc-body h3 {
+  font-size: 1.12em;
+}
+
+.doc .doc-body h4,
+.doc .doc-body h5,
+.doc .doc-body h6 {
+  font-size: 1em;
+}
+
+.doc .heading-number {
+  margin-right: 0.7em;
+  color: #666666;
+}
+
+/* Text blocks */
+.doc .doc-body p {
+  margin: 0 0 0.9em;
+}
+
+.doc .doc-body ul,
+.doc .doc-body ol {
+  margin: 0 0 0.9em;
+  padding-left: 1.5em;
+}
+
+.doc .doc-body li > p {
+  margin: 0;
+}
+
+.doc .doc-body li > ul,
+.doc .doc-body li > ol {
+  margin: 0;
+}
+
+.doc .doc-body blockquote {
+  margin: 1em 0;
+  padding: 0 1em;
+  color: #555555;
+}
+
+.doc .doc-body blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+.doc .doc-body pre {
+  margin: 1em 0;
+  padding: 0.8em 1em;
+  overflow-x: auto;
+  background: #f6f6f6;
+  line-height: 1.6;
+}
+
+.doc .doc-body code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  font-size: 0.92em;
+}
+
+.doc .doc-body hr {
+  margin: 1.8em 0;
+  border: 0;
+  border-top: 1px solid #dddddd;
+}
+
+.doc .doc-body a {
+  color: #1a5fb4;
+}
+
+.doc .doc-body img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Tables: horizontal rules only */
+.doc .doc-body table {
+  width: 100%;
+  margin: 1em 0;
+  border-collapse: collapse;
+  border-top: 1.5px solid #222222;
+  border-bottom: 1.5px solid #222222;
+  font-size: 0.93em;
+  line-height: 1.6;
+}
+
+.doc .doc-body th,
+.doc .doc-body td {
+  padding: 0.4em 0.6em;
+  border-bottom: 1px solid #dddddd;
+  text-align: left;
+  vertical-align: top;
+}
+
+.doc .doc-body th {
+  border-bottom: 1px solid #222222;
+  font-weight: 700;
+}
+
+/*
+ * Spacing between blocks in a cell. Do not rely on :last-child here: while editing,
+ * a column resize handle is appended to the cell and would change the cell height.
+ */
+.doc .doc-body td > *,
+.doc .doc-body th > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.doc .doc-body td > * + *,
+.doc .doc-body th > * + * {
+  margin-top: 0.5em;
+}
+
+/* Figures, captions and cross references (Phase 2 markup) */
+.doc .doc-body figure {
+  margin: 1.4em 0;
+  text-align: center;
+}
+
+.doc .doc-body figcaption,
+.doc .table-caption {
+  font-size: 0.9em;
+}
+
+.doc .doc-body figcaption {
+  margin-top: 0.5em;
+}
+
+.doc .table-figure {
+  margin: 1.4em 0;
+}
+
+.doc .table-caption {
+  margin-bottom: 0.4em;
+}
+
+.doc .caption-number {
+  margin-right: 0.6em;
+  font-weight: 700;
+}
+
+.doc .xref {
+  color: #1a5fb4;
+}
+
+/*
+ * Header / footer for the browser view (logo and copyright from the theme settings).
+ * PDF output uses page margin boxes instead (design.md §10).
+ */
+.doc .doc-header {
+  margin: 0 0 2em;
+}
+
+.doc .doc-logo {
+  display: block;
+  max-width: 10em;
+  max-height: 2em;
+}
+
+.doc .doc-footer {
+  margin: 3em 0 0;
+  color: #6b7280;
+  font-size: 0.85em;
+}
+
+/* Cover */
+.doc .doc-cover {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  margin: 0 0 3em;
+  padding: 3em 0 2.5em;
+  border-bottom: 1px solid #c8ccd3;
+}
+
+.doc .cover-client {
+  margin-bottom: 2em;
+}
+
+.doc .cover-project {
+  color: #4b5563;
+}
+
+.doc .cover-title {
+  margin: 0 0 0.6em;
+  font-size: 2em;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.doc .cover-company {
+  margin-top: 2em;
+  font-weight: 700;
+}
+
+/* Revision history */
+.doc .doc-revisions {
+  margin: 0 0 2.5em;
+}
+
+.doc .doc-revisions h2 {
+  margin: 0 0 0.6em;
+  font-size: 1.3em;
+  font-weight: 700;
+}
+
+.doc .doc-revisions table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.93em;
+  line-height: 1.6;
+}
+
+.doc .doc-revisions th,
+.doc .doc-revisions td {
+  padding: 0.4em 0.6em;
+  border-bottom: 1px solid #c8ccd3;
+  text-align: left;
+  vertical-align: top;
+}
+
+.doc .doc-revisions th {
+  border-bottom-width: 2px;
+  font-weight: 700;
+}
+
+/*
+ * Table of contents. Exported before <main>; in the editor it is the first child of
+ * .doc-body, so rules do not depend on where it sits.
+ */
+.doc .doc-toc {
+  margin: 0 0 2.5em;
+}
+
+.doc .doc-toc + * {
+  margin-top: 0;
+}
+
+.doc .doc-toc .toc-title {
+  margin-bottom: 0.6em;
+  font-size: 1.3em;
+  font-weight: 700;
+}
+
+.doc .doc-toc .toc-item {
+  display: block;
+  padding: 0.25em 0;
+  border-bottom: 1px solid #e3e6eb;
+  color: inherit;
+  text-decoration: none;
+}
+
+.doc .doc-toc .toc-level-2 {
+  padding-left: 1.25em;
+}
+
+.doc .doc-toc .toc-level-3 {
+  padding-left: 2.5em;
+}
+
+.doc .doc-toc .toc-level-4 {
+  padding-left: 3.75em;
+}
+
+.doc .doc-toc .toc-level-5 {
+  padding-left: 5em;
+}
+
+.doc .doc-toc .toc-number {
+  display: inline-block;
+  min-width: 2.2em;
+  margin-right: 0.5em;
+  font-weight: 700;
+}
+
+/*
+ * PDF (design.md §10). Size and margin come from the page settings; the theme places the
+ * logo, running head, copyright and page number in the page margin boxes.
+ * Values come from the CSS variables defined on :root (theme settings).
+ */
+@page {
+  /*
+   * The logo is a background, not `content: url()`: content images keep their intrinsic
+   * size and cannot be scaled. Height 8mm; logos wider than 60mm are cut off.
+   */
+  @top-left {
+    content: '';
+    width: 60mm;
+    background-image: var(--header-logo);
+    background-repeat: no-repeat;
+    background-position: left bottom 3mm;
+    background-size: auto 8mm;
+  }
+  @top-right {
+    content: string(chapter);
+    color: #5b616b;
+    font-size: 8pt;
+    vertical-align: bottom;
+  }
+  @bottom-left {
+    content: var(--copyright);
+    color: #5b616b;
+    font-size: 8pt;
+  }
+  @bottom-right {
+    content: counter(page) ' / ' counter(pages);
+    color: #5b616b;
+    font-size: 8pt;
+  }
+}
+
+/* No header / footer on the cover. */
+@page :first {
+  @top-left {
+    content: none;
+  }
+  @top-right {
+    content: none;
+  }
+  @bottom-left {
+    content: none;
+  }
+  @bottom-right {
+    content: none;
+  }
+}
+
+.doc .doc-body h1 {
+  string-set: chapter content(text);
+}

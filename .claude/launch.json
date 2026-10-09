@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev", "--port", "5174", "--strictPort"],
+      "port": 5174
+    },
+    {
+      "name": "spike-pdf",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--dir", "spikes/pdf", "dev"],
+      "port": 5180
+    }
+  ]
+}

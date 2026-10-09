@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>画面設計書（複雑な表のサンプル）</title>
+</head>
+<body>
+<h1>画面設計書</h1>
+<p>本章では、画面一覧と各画面の入力項目を示す。</p>
+
+<h2>画面一覧</h2>
+<table>
+  <thead>
+    <tr>
+      <th>区分</th>
+      <th>画面ID</th>
+      <th>画面名</th>
+      <th>主な機能</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td rowspan="2">共通</td>
+      <td>SC-01</td>
+      <td>ログイン</td>
+      <td>
+        <ul>
+          <li>ID・パスワード認証</li>
+          <li>パスワード再設定</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>SC-02</td>
+      <td>メニュー</td>
+      <td><p>権限に応じた機能メニューを表示する。</p></td>
+    </tr>
+    <tr>
+      <td rowspan="2">顧客</td>
+      <td>SC-10</td>
+      <td>顧客一覧</td>
+      <td>
+        <ol>
+          <li>条件を指定して検索</li>
+          <li>結果をCSVで出力</li>
+        </ol>
+      </td>
+    </tr>
+    <tr>
+      <td>SC-11</td>
+      <td>顧客詳細</td>
+      <td>
+        <p>画面イメージ：</p>
+        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAKCAIAAAAy3EnLAAAAE0lEQVR42mPQ86olCTGMahiaGgBkuJkhmHXlqgAAAABJRU5ErkJggg==" alt="顧客詳細画面のイメージ">
+      </td>
+    </tr>
+    <tr>
+      <td colspan="3">備考</td>
+      <td>管理者のみ利用できる画面は別表とする。</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>入力項目</h2>
+<table>
+  <tr>
+    <th>項目</th>
+    <th colspan="2">仕様</th>
+  </tr>
+  <tr>
+    <td>氏名</td>
+    <td colspan="2">全角50文字以内。必須。</td>
+  </tr>
+  <tr>
+    <td>区分</td>
+    <td>
+      <table>
+        <tr>
+          <th>値</th>
+          <th>表示名</th>
+        </tr>
+        <tr>
+          <td>1</td>
+          <td>個人</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>法人</td>
+        </tr>
+      </table>
+    </td>
+    <td>
+      <p>既定値は「個人」。</p>
+      <ul>
+        <li>法人の場合は会社名が必須</li>
+        <li>変更履歴を保存する</li>
+      </ul>
+      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR42mO4WR6OFTEMLQkAcq9pwfhQlf4AAAAASUVORK5CYII=" alt="注意アイコン">
+    </td>
+  </tr>
+</table>
+<p>以上</p>
+</body>
+</html>

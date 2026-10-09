@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>PDFプレビュー</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        background: #d8d4cb;
+      }
+      #viewport {
+        position: absolute;
+        inset: 0;
+        overflow: auto;
+      }
+      @media print {
+        html,
+        body {
+          height: auto;
+          background: none;
+        }
+        /* The scrolling box would clip the printout to one sheet. */
+        #viewport {
+          position: static;
+          overflow: visible;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="viewport"></div>
+    <script type="module" src="/src/pdf/main.ts"></script>
+  </body>
+</html>

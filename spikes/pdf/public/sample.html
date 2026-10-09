@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>顧客管理システム 基本設計書</title>
+<style id="theme-vars">:root { --header-logo: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAAAgCAIAAABW2ysfAAAAR0lEQVR42u3QQQ0AAAgEoEtkEDvZ3RT6YiMBqR4eRIFo0YgWLdqCaNGIFi3agmjRiBYtGtGiES1aNKJFI1q0aESLRrRo0Vxbt11b0wTSf40AAAAASUVORK5CYII="); --copyright: "© 2026 株式会社サンプル \"引用\""; }</style>
+<style id="theme">/*
+ * Built-in theme "standard" (標準): Mincho headings, Gothic body, ruled tables.
+ * Follows the theme contract in src/themes/README.md.
+ */
+
+.doc,
+.doc * {
+  box-sizing: border-box;
+}
+
+.doc {
+  max-width: 54em;
+  margin: 0 auto;
+  padding: 3.5em 4.5em;
+  background: #ffffff;
+  color: #1d2129;
+  font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'BIZ UDPGothic', Meiryo, sans-serif;
+  font-size: var(--base-font-size, 10.5pt);
+  line-height: 1.85;
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 640px) {
+  .doc {
+    padding: 2em 1.25em;
+  }
+}
+
+/* Headings */
+.doc .doc-body h1,
+.doc .doc-body h2,
+.doc .doc-body h3,
+.doc .doc-body h4,
+.doc .doc-body h5,
+.doc .doc-body h6 {
+  margin: 1.8em 0 0.7em;
+  font-family: 'Hiragino Mincho ProN', 'BIZ UDPMincho', 'Yu Mincho', serif;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.doc .doc-body > :first-child {
+  margin-top: 0;
+}
+
+.doc .doc-body h1 {
+  padding-bottom: 0.35em;
+  border-bottom: 2px solid #1d2129;
+  font-size: 1.75em;
+}
+
+.doc .doc-body h2 {
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid #b9bec7;
+  font-size: 1.4em;
+}
+
+.doc .doc-body h3 {
+  font-size: 1.2em;
+}
+
+.doc .doc-body h4 {
+  font-size: 1.05em;
+}
+
+.doc .doc-body h5,
+.doc .doc-body h6 {
+  font-size: 1em;
+}
+
+.doc .heading-number {
+  margin-right: 0.8em;
+  color: #2e4a7d;
+}
+
+/* Text blocks */
+.doc .doc-body p {
+  margin: 0 0 0.9em;
+}
+
+.doc .doc-body ul,
+.doc .doc-body ol {
+  margin: 0 0 0.9em;
+  padding-left: 1.6em;
+}
+
+.doc .doc-body li > p {
+  margin: 0;
+}
+
+.doc .doc-body li > ul,
+.doc .doc-body li > ol {
+  margin: 0;
+}
+
+.doc .doc-body blockquote {
+  margin: 1em 0;
+  padding: 0.3em 1em;
+  border-left: 4px solid #b9bec7;
+  color: #4b5563;
+}
+
+.doc .doc-body blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+.doc .doc-body pre {
+  margin: 1em 0;
+  padding: 0.8em 1em;
+  overflow-x: auto;
+  background: #f5f6f8;
+  border: 1px solid #e3e6eb;
+  border-radius: 4px;
+  line-height: 1.6;
+}
+
+.doc .doc-body code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  font-size: 0.92em;
+}
+
+.doc .doc-body :not(pre) > code {
+  padding: 0.1em 0.35em;
+  background: #f1f3f6;
+  border-radius: 3px;
+}
+
+.doc .doc-body hr {
+  margin: 1.8em 0;
+  border: 0;
+  border-top: 1px solid #b9bec7;
+}
+
+.doc .doc-body a {
+  color: #2e4a7d;
+}
+
+.doc .doc-body img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Tables */
+.doc .doc-body table {
+  width: 100%;
+  margin: 1em 0;
+  border-collapse: collapse;
+  font-size: 0.93em;
+  line-height: 1.6;
+}
+
+.doc .doc-body th,
+.doc .doc-body td {
+  padding: 0.4em 0.6em;
+  border: 1px solid #b9bec7;
+  text-align: left;
+  vertical-align: top;
+}
+
+.doc .doc-body th {
+  background: #f1f3f6;
+  font-weight: 700;
+}
+
+/*
+ * Spacing between blocks in a cell. Do not rely on :last-child here: while editing,
+ * a column resize handle is appended to the cell and would change the cell height.
+ */
+.doc .doc-body td > *,
+.doc .doc-body th > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.doc .doc-body td > * + *,
+.doc .doc-body th > * + * {
+  margin-top: 0.5em;
+}
+
+/* Figures, captions and cross references (Phase 2 markup) */
+.doc .doc-body figure {
+  margin: 1.4em 0;
+  text-align: center;
+}
+
+.doc .doc-body figcaption,
+.doc .table-caption {
+  font-size: 0.9em;
+  font-weight: 700;
+}
+
+.doc .doc-body figcaption {
+  margin-top: 0.5em;
+}
+
+.doc .table-figure {
+  margin: 1.4em 0;
+}
+
+.doc .table-caption {
+  margin-bottom: 0.4em;
+  text-align: center;
+}
+
+.doc .caption-number {
+  margin-right: 0.7em;
+  color: #2e4a7d;
+}
+
+.doc .xref {
+  padding: 0.05em 0.4em;
+  background: #e3e9f4;
+  border-radius: 3px;
+  color: #1f355c;
+  font-size: 0.93em;
+  text-decoration: none;
+}
+</style>
+<link rel="stylesheet" href="./print.css">
+</head>
+<body>
+<div class="doc">
+<header class="doc-header"><img class="doc-logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAAAgCAIAAABW2ysfAAAAR0lEQVR42u3QQQ0AAAgEoEtkEDvZ3RT6YiMBqR4eRIFo0YgWLdqCaNGIFi3agmjRiBYtGtGiES1aNKJFI1q0aESLRrRo0Vxbt11b0wTSf40AAAAASUVORK5CYII=" alt="株式会社サンプル"></header>
+<section class="doc-cover">
+<div class="cover-project">顧客管理システム</div>
+<h1 class="cover-title">基本設計書</h1>
+<div class="cover-version">第1.2版</div>
+<div class="cover-date">2026年10月5日</div>
+<div class="cover-client">顧客株式会社 御中</div>
+<div class="cover-company">株式会社サンプル</div>
+</section>
+<section class="doc-revisions"><h2>改訂履歴</h2><table><thead><tr><th>版</th><th>日付</th><th>内容</th><th>担当</th></tr></thead><tbody>
+<tr><td>1.0</td><td>2026-09-01</td><td>初版</td><td>山田</td></tr>
+<tr><td>1.1</td><td>2026-09-15</td><td>画面設計を追加</td><td>佐藤</td></tr>
+<tr><td>1.2</td><td>2026-10-01</td><td>機能一覧を更新</td><td>山田</td></tr></tbody></table></section>
+<nav class="doc-toc"><h2>目次</h2><ol>
+<li class="toc-item toc-level-1"><a href="#h-1"><span class="toc-number">1</span>はじめに</a></li>
+<li class="toc-item toc-level-2"><a href="#h-1-1"><span class="toc-number">1.1</span>目的</a></li>
+<li class="toc-item toc-level-2"><a href="#h-1-2"><span class="toc-number">1.2</span>対象範囲</a></li>
+<li class="toc-item toc-level-1"><a href="#h-2"><span class="toc-number">2</span>画面設計</a></li>
+<li class="toc-item toc-level-2"><a href="#h-2-1"><span class="toc-number">2.1</span>画面一覧</a></li>
+<li class="toc-item toc-level-2"><a href="#h-2-2"><span class="toc-number">2.2</span>画面レイアウト</a></li>
+<li class="toc-item toc-level-1"><a href="#h-3"><span class="toc-number">3</span>機能設計</a></li>
+<li class="toc-item toc-level-2"><a href="#h-3-1"><span class="toc-number">3.1</span>顧客登録</a></li>
+<li class="toc-item toc-level-3"><a href="#h-3-1-1"><span class="toc-number">3.1.1</span>入力チェック</a></li>
+<li class="toc-item toc-level-2"><a href="#h-3-2"><span class="toc-number">3.2</span>機能一覧</a></li>
+<li class="toc-item toc-level-2"><a href="#h-3-3"><span class="toc-number">3.3</span>項目定義</a></li>
+<li class="toc-item toc-level-1"><a href="#h-4"><span class="toc-number">4</span>データ設計</a></li>
+</ol></nav>
+<main class="doc-body">
+<h1 id="h-1"><span class="heading-number">1</span>はじめに</h1>
+<p>本システムは顧客情報を一元管理し、問い合わせ対応の効率化を図る。1番目の段落では、画面設計と機能設計の前提となる業務要件を説明する。日本語の組版では、句読点のぶら下がりや禁則処理、和欧混植の間隔が読みやすさに影響する。API（Application Programming Interface）やHTTP 200などの英数字も含める。</p>
+<p>本システムは顧客情報を一元管理し、問い合わせ対応の効率化を図る。2番目の段落では、画面設計と機能設計の前提となる業務要件を説明する。日本語の組版では、句読点のぶら下がりや禁則処理、和欧混植の間隔が読みやすさに影響する。API（Application Programming Interface）やHTTP 200などの英数字も含める。</p>
+<h2 id="h-1-1"><span class="heading-number">1.1</span>目的</h2>
+<p>本システムは顧客情報を一元管理し、問い合わせ対応の効率化を図る。1番目の段落では、画面設計と機能設計の前提となる業務要件を説明する。日本語の組版では、句読点のぶら下がりや禁則処理、和欧混植の間隔が読みやすさに影響する。API（Application Programming Interface）やHTTP 200などの英数字も含める。</p>
+<p>画面の一覧は<a class="xref" href="#t-1">表1</a>、レイアウトは<a class="xref" href="#f-1">図1</a>、入力チェックは<a class="xref" href="#h-3-1-1">3.1.1節</a>を参照。</p>
+<h2 id="h-1-2"><span class="heading-number">1.2</span>対象範囲</h2>
+<p>本システムは顧客情報を一元管理し、問い合わせ対応の効率化を図る。1番目の段落では、画面設計と機能設計の前提となる業務要件を説明する。日本語の組版では、句読点のぶら下がりや禁則処理、和欧混植の間隔が読みやすさに影響する。API（Application Programming Interface）やHTTP 200などの英数字も含める。</p>
+<p>本システムは顧客情報を一元管理し、問い合わせ対応の効率化を図る。2番目の段落では、画面設計と機能設計の前提となる業務要件を説明する。日本語の組版では、句読点のぶら下がりや禁則処理、和欧混植の間隔が読みやすさに影響する。API（Application Programming Interface）やHTTP 200などの英数字も含める。</p>
+<h1 id="h-2"><span class="heading-number">2</span>画面設計</h1>
+<h2 id="h-2-1"><span class="heading-number">2.1</span>画面一覧</h2>
+<div class="table-figure" id="t-1"><div class="table-caption"><span class="caption-number">表1</span>画面一覧</div><table><thead><tr><th>区分</th><th>画面ID</th><th>画面名</th><th>主な機能</th></tr></thead><tbody>
+<tr><td rowspan="2">共通</td><td>SC-01</td><td>ログイン</td><td><ul><li><p>ID・パスワード認証</p></li><li><p>パスワード再設定</p></li></ul></td></tr>
+<tr><td>SC-02</td><td>メニュー</td><td>権限に応じた機能メニューの表示</td></tr>
+<tr><td rowspan="2">顧客</td><td>SC-10</td><td>顧客一覧</td><td>条件検索、CSV出力</td></tr>
+<tr><td>SC-11</td><td>顧客詳細</td><td><table><tr><th>値</th><th>表示名</th></tr><tr><td>1</td><td>個人</td></tr><tr><td>2</td><td>法人</td></tr></table></td></tr>
+<tr><td colspan="3">備考</td><td>管理者画面は別表とする。</td></tr></tbody></table></div>
+<p>本システムは顧客情報を一元管理し、問い合わせ対応の効率化を図る。1番目の段落では、画面設計と機能設計の前提となる業務要件を説明する。日本語の組版では、句読点のぶら下がりや禁則処理、和欧混植の間隔が読みやすさに影響する。API（Application Programming Interface）やHTTP 200などの英数字も含める。</p>
+<h2 id="h-2-2"><span class="heading-number">2.2</span>画面レイアウト</h2>
+<figure id="f-1"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAADcCAIAAADRMGA4AAACNUlEQVR42u3UQQkAAAgEweufzLcNbGIMEQYmwT421QPwQiQADAvAsADDAjAsAMMCDAvAsAAMCzAsAMMCMCzAsAAMC8CwAMMCMCwAwwIMC8CwAAwLMCwAwwIwLMCwAAwLwLAAwwIwLMCwVAAMC8CwAMMCMCwAwwIMC8CwAAwLMCwAwwIwLMCwAAwLwLAAwwIwLADDAgwLwLAADAswLADDAjAswLAADAvAsADDAjAswLBUAAwLwLAAwwIwLADDAgwLwLAADAswLADDAjAswLAADAvAsADDAjAsAMMCDAvAsAAMCzAsAMMCMCzAsAAMC8CwAMMCMCzAsAAMC8CwAMMCMCwAwwIMC8CwAAwLMCwAwwIwLMCwAAwLwLAAwwIwLADDAgwLwLAADAswLADDAjAswLAADAvAsADDAjAswLAADAvAsADDAjAsAMMCDAvAsAAMCzAsAMMCMCzAsAAMC8CwAMMCMCwAwwIMC8CwAAwLMCwAwwIwLMCwAAwLwLAAwwIwLMCwAAwLwLAAwwIwLADDAgwLwLAADAswLADDAjAswLAADAvAsADDAjAsAMMCDAvAsAAMCzAsAMMCMCzAsAAMC8CwAMMCMCzAsAAMC8CwAMMCMCwAwwIMC8CwAAwLMCwAwwIwLMCwAAwLwLAAwwIwLADDAgwLwLAADAswLADDAjAswLAADAvAsADDAjAswLAADAvAsADDAjAsAMMCDAvAsAAMCzAsAMMCMCzAsAAMC8CwAMMCuLAFx9stGwZuYQAAAABJRU5ErkJggg==" alt="顧客一覧画面レイアウト"><figcaption><span class="caption-number">図1</span>顧客一覧画面レイアウト</figcaption></figure>
+<p>本システムは顧客情報を一元管理し、問い合わせ対応の効率化を図る。1番目の段落では、画面設計と機能設計の前提となる業務要件を説明する。日本語の組版では、句読点のぶら下がりや禁則処理、和欧混植の間隔が読みやすさに影響する。API（Application Programming Interface）やHTTP 200などの英数字も含める。</p>
+<p>本システムは顧客情報を一元管理し、問い合わせ対応の効率化を図る。2番目の段落では、画面設計と機能設計の前提となる業務要件を説明する。日本語の組版では、句読点のぶら下がりや禁則処理、和欧混植の間隔が読みやすさに影響する。API（Application Programming Interface）やHTTP 200などの英数字も含める。</p>
+<p>本システムは顧客情報を一元管理し、問い合わせ対応の効率化を図る。3番目の段落では、画面設計と機能設計の前提となる業務要件を説明する。日本語の組版では、句読点のぶら下がりや禁則処理、和欧混植の間隔が読みやすさに影響する。API（Application Programming Interface）やHTTP 200などの英数字も含める。</p>
+<h1 id="h-3"><span class="heading-number">3</span>機能設計</h1>
+<h2 id="h-3-1"><span class="heading-number">3.1</span>顧客登録</h2>
+<h3 id="h-3-1-1"><span class="heading-number">3.1.1</span>入力チェック</h3>
+<h4 id="h-3-1-1-1"><span class="heading-number">3.1.1.1</span>必須チェック</h4>
+<h5 id="h-3-1-1-1-1"><span class="heading-number">3.1.1.1.1</span>氏名</h5>
+<p>本システムは顧客情報を一元管理し、問い合わせ対応の効率化を図る。1番目の段落では、画面設計と機能設計の前提となる業務要件を説明する。日本語の組版では、句読点のぶら下がりや禁則処理、和欧混植の間隔が読みやすさに影響する。API（Application Programming Interface）やHTTP 200などの英数字も含める。</p>
+<h5 id="h-3-1-1-1-2"><span class="heading-number">3.1.1.1.2</span>メールアドレス</h5>
+<p>本システムは顧客情報を一元管理し、問い合わせ対応の効率化を図る。1番目の段落では、画面設計と機能設計の前提となる業務要件を説明する。日本語の組版では、句読点のぶら下がりや禁則処理、和欧混植の間隔が読みやすさに影響する。API（Application Programming Interface）やHTTP 200などの英数字も含める。</p>
+<h2 id="h-3-2"><span class="heading-number">3.2</span>機能一覧</h2>
+<p>機能の一覧を次の表に示す（ページをまたぐ長い表）。</p>
+<div class="table-figure" id="t-2"><div class="table-caption"><span class="caption-number">表2</span>機能一覧</div><table><thead><tr><th>機能ID</th><th>機能名</th><th>優先度</th><th>概要</th></tr></thead><tbody><tr><td>F-001</td><td>機能1</td><td>高</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-002</td><td>機能2</td><td>中</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-003</td><td>機能3</td><td>低</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-004</td><td>機能4</td><td>高</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-005</td><td>機能5</td><td>中</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-006</td><td>機能6</td><td>低</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-007</td><td>機能7</td><td>高</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-008</td><td>機能8</td><td>中</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-009</td><td>機能9</td><td>低</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-010</td><td>機能10</td><td>高</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-011</td><td>機能11</td><td>中</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-012</td><td>機能12</td><td>低</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-013</td><td>機能13</td><td>高</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-014</td><td>機能14</td><td>中</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-015</td><td>機能15</td><td>低</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-016</td><td>機能16</td><td>高</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-017</td><td>機能17</td><td>中</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-018</td><td>機能18</td><td>低</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-019</td><td>機能19</td><td>高</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-020</td><td>機能20</td><td>中</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-021</td><td>機能21</td><td>低</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-022</td><td>機能22</td><td>高</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-023</td><td>機能23</td><td>中</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-024</td><td>機能24</td><td>低</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-025</td><td>機能25</td><td>高</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-026</td><td>機能26</td><td>中</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-027</td><td>機能27</td><td>低</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-028</td><td>機能28</td><td>高</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-029</td><td>機能29</td><td>中</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-030</td><td>機能30</td><td>低</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-031</td><td>機能31</td><td>高</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-032</td><td>機能32</td><td>中</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-033</td><td>機能33</td><td>低</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-034</td><td>機能34</td><td>高</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-035</td><td>機能35</td><td>中</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-036</td><td>機能36</td><td>低</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-037</td><td>機能37</td><td>高</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-038</td><td>機能38</td><td>中</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-039</td><td>機能39</td><td>低</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-040</td><td>機能40</td><td>高</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-041</td><td>機能41</td><td>中</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-042</td><td>機能42</td><td>低</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-043</td><td>機能43</td><td>高</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-044</td><td>機能44</td><td>中</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-045</td><td>機能45</td><td>低</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-046</td><td>機能46</td><td>高</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-047</td><td>機能47</td><td>中</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-048</td><td>機能48</td><td>低</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-049</td><td>機能49</td><td>高</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-050</td><td>機能50</td><td>中</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-051</td><td>機能51</td><td>低</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-052</td><td>機能52</td><td>高</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-053</td><td>機能53</td><td>中</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-054</td><td>機能54</td><td>低</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-055</td><td>機能55</td><td>高</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-056</td><td>機能56</td><td>中</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-057</td><td>機能57</td><td>低</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-058</td><td>機能58</td><td>高</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-059</td><td>機能59</td><td>中</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-060</td><td>機能60</td><td>低</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-061</td><td>機能61</td><td>高</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-062</td><td>機能62</td><td>中</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-063</td><td>機能63</td><td>低</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-064</td><td>機能64</td><td>高</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-065</td><td>機能65</td><td>中</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-066</td><td>機能66</td><td>低</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-067</td><td>機能67</td><td>高</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-068</td><td>機能68</td><td>中</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-069</td><td>機能69</td><td>低</td><td>入力値を検証し、結果を画面に表示する。</td></tr><tr><td>F-070</td><td>機能70</td><td>高</td><td>入力値を検証し、結果を画面に表示する。</td></tr></tbody></table></div>
+<h2 id="h-3-3"><span class="heading-number">3.3</span>項目定義</h2>
+<p>列の多い表は横向きのページに配置する。</p>
+<div class="table-figure is-landscape" id="t-3"><div class="table-caption"><span class="caption-number">表3</span>項目定義（横向き）</div><table><thead><tr><th>項目1</th><th>項目2</th><th>項目3</th><th>項目4</th><th>項目5</th><th>項目6</th><th>項目7</th><th>項目8</th><th>項目9</th><th>項目10</th><th>項目11</th><th>項目12</th><th>項目13</th><th>項目14</th></tr></thead><tbody><tr><td>値1-1</td><td>値1-2</td><td>値1-3</td><td>値1-4</td><td>値1-5</td><td>値1-6</td><td>値1-7</td><td>値1-8</td><td>値1-9</td><td>値1-10</td><td>値1-11</td><td>値1-12</td><td>値1-13</td><td>値1-14</td></tr><tr><td>値2-1</td><td>値2-2</td><td>値2-3</td><td>値2-4</td><td>値2-5</td><td>値2-6</td><td>値2-7</td><td>値2-8</td><td>値2-9</td><td>値2-10</td><td>値2-11</td><td>値2-12</td><td>値2-13</td><td>値2-14</td></tr><tr><td>値3-1</td><td>値3-2</td><td>値3-3</td><td>値3-4</td><td>値3-5</td><td>値3-6</td><td>値3-7</td><td>値3-8</td><td>値3-9</td><td>値3-10</td><td>値3-11</td><td>値3-12</td><td>値3-13</td><td>値3-14</td></tr><tr><td>値4-1</td><td>値4-2</td><td>値4-3</td><td>値4-4</td><td>値4-5</td><td>値4-6</td><td>値4-7</td><td>値4-8</td><td>値4-9</td><td>値4-10</td><td>値4-11</td><td>値4-12</td><td>値4-13</td><td>値4-14</td></tr><tr><td>値5-1</td><td>値5-2</td><td>値5-3</td><td>値5-4</td><td>値5-5</td><td>値5-6</td><td>値5-7</td><td>値5-8</td><td>値5-9</td><td>値5-10</td><td>値5-11</td><td>値5-12</td><td>値5-13</td><td>値5-14</td></tr><tr><td>値6-1</td><td>値6-2</td><td>値6-3</td><td>値6-4</td><td>値6-5</td><td>値6-6</td><td>値6-7</td><td>値6-8</td><td>値6-9</td><td>値6-10</td><td>値6-11</td><td>値6-12</td><td>値6-13</td><td>値6-14</td></tr><tr><td>値7-1</td><td>値7-2</td><td>値7-3</td><td>値7-4</td><td>値7-5</td><td>値7-6</td><td>値7-7</td><td>値7-8</td><td>値7-9</td><td>値7-10</td><td>値7-11</td><td>値7-12</td><td>値7-13</td><td>値7-14</td></tr><tr><td>値8-1</td><td>値8-2</td><td>値8-3</td><td>値8-4</td><td>値8-5</td><td>値8-6</td><td>値8-7</td><td>値8-8</td><td>値8-9</td><td>値8-10</td><td>値8-11</td><td>値8-12</td><td>値8-13</td><td>値8-14</td></tr></tbody></table></div>
+<p>本システムは顧客情報を一元管理し、問い合わせ対応の効率化を図る。1番目の段落では、画面設計と機能設計の前提となる業務要件を説明する。日本語の組版では、句読点のぶら下がりや禁則処理、和欧混植の間隔が読みやすさに影響する。API（Application Programming Interface）やHTTP 200などの英数字も含める。</p>
+<p>本システムは顧客情報を一元管理し、問い合わせ対応の効率化を図る。2番目の段落では、画面設計と機能設計の前提となる業務要件を説明する。日本語の組版では、句読点のぶら下がりや禁則処理、和欧混植の間隔が読みやすさに影響する。API（Application Programming Interface）やHTTP 200などの英数字も含める。</p>
+<h1 id="h-4"><span class="heading-number">4</span>データ設計</h1>
+<figure id="f-2"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAADcCAIAAADRMGA4AAACNUlEQVR42u3UQQkAAAgEweufzLcNbGIMEQYmwT421QPwQiQADAvAsADDAjAsAMMCDAvAsAAMCzAsAMMCMCzAsAAMC8CwAMMCMCwAwwIMC8CwAAwLMCwAwwIwLMCwAAwLwLAAwwIwLMCwVAAMC8CwAMMCMCwAwwIMC8CwAAwLMCwAwwIwLMCwAAwLwLAAwwIwLADDAgwLwLAADAswLADDAjAswLAADAvAsADDAjAswLBUAAwLwLAAwwIwLADDAgwLwLAADAswLADDAjAswLAADAvAsADDAjAsAMMCDAvAsAAMCzAsAMMCMCzAsAAMC8CwAMMCMCzAsAAMC8CwAMMCMCwAwwIMC8CwAAwLMCwAwwIwLMCwAAwLwLAAwwIwLADDAgwLwLAADAswLADDAjAswLAADAvAsADDAjAswLAADAvAsADDAjAsAMMCDAvAsAAMCzAsAMMCMCzAsAAMC8CwAMMCMCwAwwIMC8CwAAwLMCwAwwIwLMCwAAwLwLAAwwIwLMCwAAwLwLAAwwIwLADDAgwLwLAADAswLADDAjAswLAADAvAsADDAjAsAMMCDAvAsAAMCzAsAMMCMCzAsAAMC8CwAMMCMCzAsAAMC8CwAMMCMCwAwwIMC8CwAAwLMCwAwwIwLMCwAAwLwLAAwwIwLADDAgwLwLAADAswLADDAjAswLAADAvAsADDAjAswLAADAvAsADDAjAsAMMCDAvAsAAMCzAsAMMCMCzAsAAMC8CwAMMCuLAFx9stGwZuYQAAAABJRU5ErkJggg==" alt="ER図"><figcaption><span class="caption-number">図2</span>ER図</figcaption></figure>
+<p>本システムは顧客情報を一元管理し、問い合わせ対応の効率化を図る。1番目の段落では、画面設計と機能設計の前提となる業務要件を説明する。日本語の組版では、句読点のぶら下がりや禁則処理、和欧混植の間隔が読みやすさに影響する。API（Application Programming Interface）やHTTP 200などの英数字も含める。</p>
+<p>本システムは顧客情報を一元管理し、問い合わせ対応の効率化を図る。2番目の段落では、画面設計と機能設計の前提となる業務要件を説明する。日本語の組版では、句読点のぶら下がりや禁則処理、和欧混植の間隔が読みやすさに影響する。API（Application Programming Interface）やHTTP 200などの英数字も含める。</p>
+<p>本システムは顧客情報を一元管理し、問い合わせ対応の効率化を図る。3番目の段落では、画面設計と機能設計の前提となる業務要件を説明する。日本語の組版では、句読点のぶら下がりや禁則処理、和欧混植の間隔が読みやすさに影響する。API（Application Programming Interface）やHTTP 200などの英数字も含める。</p>
+<p>本システムは顧客情報を一元管理し、問い合わせ対応の効率化を図る。4番目の段落では、画面設計と機能設計の前提となる業務要件を説明する。日本語の組版では、句読点のぶら下がりや禁則処理、和欧混植の間隔が読みやすさに影響する。API（Application Programming Interface）やHTTP 200などの英数字も含める。</p>
+</main>
+<footer class="doc-footer"><span class="doc-copyright">© 2026 株式会社サンプル</span></footer>
+</div>
+</body>
+</html>
