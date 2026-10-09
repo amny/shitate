@@ -298,6 +298,34 @@
   color: #a3a7ae;
 }
 
+/*
+ * Code block language picker (HighlightedCodeBlock). Editing UI only; not exported.
+ * Shown on hover / keyboard focus so it does not cover the first line of the code.
+ */
+.doc-body.ProseMirror pre.code-block-view {
+  position: relative;
+}
+
+.doc-body.ProseMirror .code-language-select {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  padding: 1px 4px;
+  border: 1px solid #d0d4da;
+  border-radius: 3px;
+  background: #ffffff;
+  color: #3b4049;
+  font: 12px/1.4 system-ui, sans-serif;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.doc-body.ProseMirror pre.code-block-view:hover .code-language-select,
+.doc-body.ProseMirror .code-language-select:focus-visible {
+  opacity: 1;
+}
+
 /* Cross reference dialog */
 .dialog-backdrop {
   position: fixed;

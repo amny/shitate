@@ -3,6 +3,7 @@ import type { Extensions, JSONContent } from '@tiptap/core';
 import { computeLabels } from '../labels';
 import { EMBEDDED_DATA_FORMAT, EMBEDDED_DATA_VERSION } from '../model';
 import type { DocumentState, EmbeddedData, Theme } from '../model';
+import { highlightCodeBlocks } from './highlightCode';
 import { escapeHtml, escapeStyleContent, serializeJsonForScript } from './escape';
 import { IMAGE_VIEWER_CSS, IMAGE_VIEWER_SCRIPT, IMAGE_VIEWER_STYLE_ID } from './imageViewer';
 import { insertResolvedLabels } from './resolveLabels';
@@ -52,7 +53,9 @@ export function buildExportHtml(
     ? renderTocNav(labels.toc, resolveTocDepth(theme.settings, state.settingsOverride))
     : null;
   const headerFooter = resolveHeaderFooter(theme.settings, state.settingsOverride);
-  const body = insertResolvedLabels(generateHTML(bodyDoc as JSONContent, extensions), labels);
+  const body = highlightCodeBlocks(
+    insertResolvedLabels(generateHTML(bodyDoc as JSONContent, extensions), labels),
+  );
   const title = state.meta.title.trim() || FALLBACK_TITLE;
 
   return [

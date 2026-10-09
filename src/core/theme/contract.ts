@@ -40,6 +40,19 @@ export const THEME_CONTRACT_CLASSES: readonly string[] = [
   'xref',
 ];
 
+/**
+ * Class prefixes a theme may use: `hljs-` for the syntax highlighting of code blocks
+ * (design.md §5.7), whose class names come from highlight.js.
+ */
+export const THEME_CONTRACT_CLASS_PREFIXES: readonly string[] = ['hljs-'];
+
+function isContractClass(className: string): boolean {
+  return (
+    THEME_CONTRACT_CLASSES.includes(className) ||
+    THEME_CONTRACT_CLASS_PREFIXES.some((prefix) => className.startsWith(prefix))
+  );
+}
+
 export const THEME_CONTRACT_VARIABLES: readonly string[] = [
   '--header-logo',
   '--copyright',
@@ -120,7 +133,7 @@ function checkSelectors(prelude: string, violations: ThemeContractViolation[]): 
     }
     for (const match of selector.matchAll(/\.([a-zA-Z_][\w-]*)/g)) {
       const className = match[1] ?? '';
-      if (!THEME_CONTRACT_CLASSES.includes(className)) {
+      if (!isContractClass(className)) {
         violations.push({ kind: 'unknown-class', subject: `.${className}`, selector });
       }
     }

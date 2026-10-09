@@ -20,6 +20,7 @@
 | 改訂履歴           | `.doc-revisions`                                                                                                            |
 | 目次               | `.doc-toc`, `.toc-title`, `.toc-item`, `.toc-level-1`〜`.toc-level-5`, `.toc-number`                                        |
 | 本文               | `.doc-body`, `.heading-number`, `.table-figure`, `.table-figure.is-landscape`, `.table-caption`, `.caption-number`, `.xref` |
+| コードのハイライト | `hljs-` で始まるクラス（`.hljs-keyword`、`.hljs-string`、`.hljs-comment`、`.hljs-title` など。highlight.js のクラス名）     |
 
 `h1`〜`h6`、`p`、`ul`、`ol`、`li`、`blockquote`、`pre`、`code`、`table`、`th`、`td`、`img`、`figure`、`figcaption`、`a`、`hr` などの要素セレクタは、`.doc` の下であれば使ってよい。
 

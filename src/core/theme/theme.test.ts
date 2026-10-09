@@ -45,6 +45,7 @@ describe('findThemeContractViolations', () => {
       @media print { .doc .xref { color: black; } }
       @page { @top-left { content: var(--header-logo); } }
       @page :first { @top-left { content: none; } }
+      .doc .doc-body .hljs-keyword, .doc .doc-body .hljs-built_in { color: blue; }
     `;
     expect(findThemeContractViolations(css)).toEqual([]);
   });
@@ -55,6 +56,7 @@ describe('findThemeContractViolations', () => {
     ['body selector', 'body .doc { margin: 0; }', 'not scoped under .doc'],
     ['unknown class', '.doc .my-class { color: red; }', 'class not in the theme contract'],
     ['editor class', '.doc .ProseMirror { color: red; }', 'class not in the theme contract'],
+    ['hljs root class', '.doc .hljs { color: red; }', 'class not in the theme contract'],
     ['@page size', '@page { size: A4; }', '@page must not set "size"'],
     ['@page margin', '@page { margin-top: 10mm; }', '@page must not set "margin-top"'],
     ['@import', '@import url("https://example.com/a.css");', 'unsupported at-rule'],

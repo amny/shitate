@@ -453,6 +453,23 @@
   - 対象は `paragraph` のみ。`heading`・キャプション（`figcaption` / `tableCaption`）内の画像は従来どおりエラーになる。必要になれば別タスクにする。
   - 段落から出した画像の `marks`（リンク等）はそのまま残すので、付いていればスキーマ検証でエラーになる。
 
+### [x] 2-13 コードブロックのシンタックスハイライト
+- 内容：§5.7。コードブロックに言語を設定し、エディターとエクスポートHTML（PDFを含む）で色付けする。文書に保存するのは `codeBlock.language` だけ。
+- 受け入れ基準：
+  - コードブロックの言語を選択欄で選べる（「テキスト」＋対応15言語）。選ぶと色が付き、編集に追従する。言語の変更はUndoできる
+  - 別名（`ts`、`sh`、`html` など）は対応する言語として扱う。言語なし・未対応の言語は色を付けない（自動判定しない）。未対応の値は文書に残る
+  - エクスポートHTMLのコードブロックが `<span class="hljs-…">` で色付けされ、選択欄は出力されない。埋め込みデータと往復は変わらない
+  - テーマは `hljs-` で始まるクラスで色を指定でき、ビルトインテーマ2つに配色がある
+- 依存：1-2、3-1
+- メモ：
+  - ユーザーの依頼で追加したタスク。
+  - **依存パッケージを追加**：`@tiptap/extension-code-block-lowlight` 3.31.4（エディターのデコレーション）、`lowlight` 3.3.0 と `highlight.js` 11.12.0（字句分割と文法。どれもBSD-3-Clause / MIT）。文法は対応15言語だけを個別にimportしている。
+  - **design.md を更新**：§2（技術スタック）、§3（構成）、§5.1（codeBlock の行）、§5.7（新設）、§7.1（手順2）、§8.2（テーマ契約に `hljs-` 接頭辞を追加）。契約の検査は `THEME_CONTRACT_CLASS_PREFIXES`。`hljs-title function_` の `function_` のような修飾クラスは契約に含めていない。
+  - CodeBlockLowlight は言語なしのとき `highlightAuto` を呼ぶため、自動判定をしない lowlight のラッパーを渡している（`src/editor/extensions/codeBlock.ts`）。
+  - エクスポートでは、`generateHTML` の結果のうち `<pre><code class="language-x">` の中身を文字参照を戻してから字句分割し、エスケープし直して出力する（`core/export/highlightCode.ts`）。入れ子の要素はクラスを連結した平坦な `<span>` にしており、エディターのデコレーションと同じ形になる。
+  - 言語の選択欄は、コードの1行目に重ならないよう、ホバー時とキーボードでフォーカスしたときだけ表示する。
+  - 単体テストは `core/highlight/highlight.test.ts`・`core/export/highlightCode.test.ts`・`export.test.ts` の「code highlighting」・`theme.test.ts`。E2Eは `tests/e2e/code-highlight.spec.ts`。
+
 **Phase 2 完了条件：ページ番号付きの目次を持つ仕様書PDFを、任意のページサイズで出力できる。**
 
 ---

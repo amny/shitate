@@ -302,6 +302,35 @@ describe('buildExportHtml: figure and table numbers', () => {
   });
 });
 
+describe('buildExportHtml: code highlighting', () => {
+  const code = (language: string | null, text: string) => ({
+    type: 'codeBlock',
+    attrs: { language },
+    content: [{ type: 'text', text }],
+  });
+  const state = createState({
+    type: 'doc',
+    content: [code('sql', "SELECT * FROM users WHERE name = '<b>';"), code(null, 'SELECT 1;')],
+  });
+  const html = buildExportHtml(state, theme, { extensions });
+  const blocks = [...new DOMParser().parseFromString(html, 'text/html').querySelectorAll('pre > code')];
+
+  it('outputs hljs spans for a supported language and plain text otherwise', () => {
+    expect(blocks.map((block) => block.textContent)).toEqual([
+      "SELECT * FROM users WHERE name = '<b>';",
+      'SELECT 1;',
+    ]);
+    expect(blocks[0]?.querySelector('.hljs-keyword')?.textContent).toBe('SELECT');
+    expect(blocks[0]?.querySelector('.hljs-string')?.textContent).toBe("'<b>'");
+    expect(blocks[1]?.children).toHaveLength(0);
+  });
+
+  it('keeps the highlighting out of the embedded data', () => {
+    const result = reimport(html);
+    expect(result.ok && result.kind === 'embedded' && result.data.state).toEqual(state);
+  });
+});
+
 describe('buildExportHtml: resized images', () => {
   const src = 'data:image/png;base64,AA';
   const sized = (width: number, height: number) => ({
