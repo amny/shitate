@@ -47,9 +47,6 @@ for (const fixture of ['basic.md', 'complex-table.html', 'spec-full.json']) {
     const exported = await exportHtml(page);
     expect(exported.name).toBe(`${fixture.replace(/\.[^.]+$/, '')}.html`);
 
-    page.once('dialog', (dialog) => {
-      void dialog.accept();
-    });
     await openFile(page, exported.name, Buffer.from(exported.html));
     await expect(page.getByRole('banner')).toContainText(exported.name);
     expect(await getHtml(page)).toBe(original);

@@ -1,5 +1,6 @@
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
+import { openDB } from 'idb';
 import { IdbStorageAdapter } from './IdbStorageAdapter';
 
 describe('IdbStorageAdapter', () => {
@@ -52,6 +53,20 @@ describe('IdbStorageAdapter', () => {
     await adapter.set('themes', 'same-key', 'theme');
     expect(await adapter.get('drafts', 'same-key')).toBe('draft');
     expect(await adapter.get('themes', 'same-key')).toBe('theme');
+  });
+
+  it('upgrades a version 1 database and keeps its data', async () => {
+    const v1 = await openDB('test-db', 1, {
+      upgrade(db) {
+        for (const name of ['drafts', 'themes', 'settings']) db.createObjectStore(name);
+      },
+    });
+    await v1.put('drafts', { saved: true }, 'current');
+    v1.close();
+
+    expect(await adapter.get('drafts', 'current')).toEqual({ saved: true });
+    await adapter.set('draftMeta', 'current', { id: 'current' });
+    expect(await adapter.list('draftMeta')).toEqual([{ id: 'current' }]);
   });
 
   it('persists across connections', async () => {

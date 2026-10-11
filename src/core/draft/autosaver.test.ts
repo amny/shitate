@@ -118,6 +118,21 @@ describe('createAutosaver', () => {
     expect(save).toHaveBeenCalledTimes(2);
   });
 
+  it('reports pending changes until they are saved', async () => {
+    let fail = true;
+    const { autosaver } = setup({
+      save: () => (fail ? Promise.reject(new Error('quota')) : Promise.resolve()),
+    });
+    expect(autosaver.hasPendingChanges()).toBe(false);
+    autosaver.schedule();
+    expect(autosaver.hasPendingChanges()).toBe(true);
+    await autosaver.flush();
+    expect(autosaver.hasPendingChanges()).toBe(true);
+    fail = false;
+    await autosaver.flush();
+    expect(autosaver.hasPendingChanges()).toBe(false);
+  });
+
   it('stops after dispose', async () => {
     const { autosaver, save } = setup();
     autosaver.schedule();

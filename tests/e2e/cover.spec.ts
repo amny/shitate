@@ -115,9 +115,6 @@ test('the cover and revisions are restored from the exported file', async ({ pag
   await panel(page).getByLabel('タイトル').fill('別の文書');
   await panel(page).getByLabel('案件名').fill('');
   await expect(paper(page).locator('.doc-revisions')).toHaveCount(0);
-  page.once('dialog', (dialog) => {
-    void dialog.accept();
-  });
 
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: '開く' }).click();

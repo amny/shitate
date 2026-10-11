@@ -7,6 +7,7 @@ import { LinkPopover } from '../editor/ui/LinkPopover';
 import { TableMenu } from '../editor/ui/TableMenu';
 import { AutosaveStatusView } from './autosave/AutosaveStatusView';
 import { RestoreDraftBanner } from './autosave/RestoreDraftBanner';
+import { SavedDocumentsDialog } from './autosave/SavedDocumentsDialog';
 import { useAutosave } from './autosave/useAutosave';
 import { Toolbar } from './layout/Toolbar';
 import { DocumentFooterPreview, DocumentPreface } from './DocumentPreface';
@@ -34,12 +35,13 @@ export function App() {
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('theme');
   const [pdfOpen, setPdfOpen] = useState(false);
   const [themeEditorOpen, setThemeEditorOpen] = useState(false);
+  const [savedDocumentsOpen, setSavedDocumentsOpen] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const fileName = useDocumentStore((state) => state.fileName);
-  const open = useOpenDocument(editor, setNotice);
-  const exportHtml = useExportDocument(editor, setNotice);
   const autosave = useAutosave(editor, setNotice);
+  const open = useOpenDocument(editor, setNotice, autosave.switchDocument);
+  const exportHtml = useExportDocument(editor, setNotice);
 
   const openLink = useCallback(() => {
     setLinkOpen(true);
@@ -87,6 +89,26 @@ export function App() {
         )}
         <AutosaveStatusView status={autosave.status} />
         <span className="app-header-spacer" />
+        <button
+          type="button"
+          className="app-header-button"
+          onClick={() => {
+            setNotice(null);
+            void autosave.newDocument();
+          }}
+        >
+          新規
+        </button>
+        <button
+          type="button"
+          className="app-header-button"
+          onClick={() => {
+            setNotice(null);
+            setSavedDocumentsOpen(true);
+          }}
+        >
+          保存済みの文書
+        </button>
         <button
           type="button"
           className="app-header-button"
@@ -146,12 +168,34 @@ export function App() {
           }}
         />
       )}
-      {autosave.pendingDraft && (
+      {autosave.suggestedDraft && (
         <RestoreDraftBanner
-          draft={autosave.pendingDraft}
-          onRestore={autosave.restoreDraft}
-          onDiscard={() => {
-            void autosave.discardDraft();
+          draft={autosave.suggestedDraft}
+          onOpen={() => {
+            if (autosave.suggestedDraft) {
+              void autosave.openSavedDocument(autosave.suggestedDraft.id);
+            }
+          }}
+          onShowList={() => {
+            setSavedDocumentsOpen(true);
+          }}
+          onDismiss={autosave.dismissSuggestion}
+        />
+      )}
+      {savedDocumentsOpen && (
+        <SavedDocumentsDialog
+          documents={autosave.savedDocuments}
+          currentId={autosave.currentId}
+          onOpen={(id) => {
+            setSavedDocumentsOpen(false);
+            setNotice(null);
+            void autosave.openSavedDocument(id);
+          }}
+          onDelete={(id) => {
+            void autosave.deleteSavedDocument(id);
+          }}
+          onClose={() => {
+            setSavedDocumentsOpen(false);
           }}
         />
       )}

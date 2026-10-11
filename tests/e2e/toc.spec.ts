@@ -150,10 +150,6 @@ test('the depth is restored with the document', async ({ page }) => {
   const path = await (await downloadPromise).path();
 
   await depthSelect(page).selectOption('5');
-  // Opening a file over a non-empty document asks for confirmation.
-  page.once('dialog', (dialog) => {
-    void dialog.accept();
-  });
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: '開く' }).click();
   await (

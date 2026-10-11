@@ -53,6 +53,7 @@ src/
     panels/               # 表紙フォーム、改訂履歴、テーマ選択
     pdf/                  # PDFプレビュー画面
     themes/               # テーマ編集画面（3-1）、ユーザーテーマの読み書き
+    autosave/             # 自動保存、保存済みの文書の一覧・切り替え（§9.2）
   editor/                 # TipTap関連（Reactに依存してよい）
     createEditor.ts       # 拡張の組み立て
     extensions/
@@ -77,6 +78,7 @@ src/
     export/               # エクスポートHTMLの組み立て
     theme/                # テーマのCSS変数生成、ビルトインテーマ定義、テーマ契約、編集用の操作
     pdf/                  # PDF用CSS（buildPageCss、組版の基本ルール）
+    draft/                # 自動保存の予約、保存データと一覧用の要約（§9.2）
   adapters/
     types.ts              # FileAdapter / StorageAdapter
     web/
@@ -413,22 +415,41 @@ export interface FileAdapter {
 }
 
 export interface StorageAdapter {
-  get<T>(store: "drafts" | "themes" | "settings", key: string): Promise<T | undefined>;
-  set(store: "drafts" | "themes" | "settings", key: string, value: unknown): Promise<void>;
-  delete(store: "drafts" | "themes" | "settings", key: string): Promise<void>;
-  list<T>(store: "drafts" | "themes" | "settings"): Promise<T[]>;
+  get<T>(store: StoreName, key: string): Promise<T | undefined>;
+  set(store: StoreName, key: string, value: unknown): Promise<void>;
+  delete(store: StoreName, key: string): Promise<void>;
+  list<T>(store: StoreName): Promise<T[]>;
 }
+
+type StoreName = "drafts" | "draftMeta" | "themes" | "settings";
 ```
+
+| ストア | キー | 値 |
+| --- | --- | --- |
+| `drafts` | 文書ID | 文書の保存データ `{ savedAt, fileName, data: EmbeddedData }` |
+| `draftMeta` | 文書ID | 一覧表示用の要約 `{ id, title, fileName, excerpt, savedAt }` |
+| `themes` | テーマID | ユーザーテーマ |
+| `settings` | 任意 | アプリ設定 |
+
+- IndexedDBのバージョンは2（バージョン2で `draftMeta` を追加）。アップグレードでは、足りないストアだけを作る。
 
 - `get<T>` / `list<T>` の `T` は呼び出し側の想定にすぎず、保存値は検証されない。読み出した値は呼び出し側でzodスキーマ等により検証する。
 - Web版：`openFile` / `openImage` は `<input type="file">`（`openImage` は FileReader でData URI化）、`saveFile` はBlob＋ダウンロードリンク。`StorageAdapter` はidbでIndexedDBに保存する。
 - アプリコードはアダプターの具象クラスを直接importせず、`src/adapters/index.ts` の取得関数経由で使う。
 - localStorageは使わない（画像入りの文書で容量を超えるため）。
 
-### 9.2 自動保存
+### 9.2 自動保存と保存済みの文書
 
-- `DocumentState` の変更を1秒debounceして `drafts/current` に保存する。
-- 起動時に `drafts/current` があれば、「前回の編集内容を復元しますか？」と確認する。
+- 文書ごとに保存枠（文書ID、`d-` ＋ランダム10文字）を持つ。`DocumentState` の変更を1秒debounceして、現在の文書の枠に保存する。本文を `drafts/<id>`、要約を `draftMeta/<id>` に、この順で書く（要約が本文のない文書を指さないように）。
+- 一覧は `draftMeta` だけを読む（画像入りの本文は大きいため、一覧のために全文書を読まない）。新しい順に並べ、表示名は「表紙タイトル → ファイル名 → 本文の冒頭（40文字）→ 無題の文書」の順で決める。
+- 文書の切り替え（新規・ファイルを開く・保存済みの文書を開く）は次の順で行う。
+  1. 現在の文書の未保存の変更をすぐ保存する。保存できなければ切り替えを中止し、警告を出す
+  2. 新しい文書をエディターとストアに読み込む。読み込みは編集ではないので、保存の予約をしない。Undo履歴は消す（前の文書の本文が、Undoで別の文書の枠に入らないように）
+  3. 現在の文書IDを切り替える。新規・ファイルを開いた場合は新しいID、保存済みの文書を開いた場合はそのIDを使う。ファイルを開いた場合だけ、すぐ保存する
+- 前の文書は自分の枠に残るので、ファイルを開くときに「現在の内容を破棄しますか？」とは確認しない。
+- 起動時は新しい空の文書で始まる。一度も編集しなければ保存しない。保存済みの文書があれば、最新の1件をバナーで「前回の文書を開きますか？」と示す（［開く］［保存済みの文書…］［閉じる］）。［閉じる］は文書を削除しない。
+- 「保存済みの文書」ダイアログで、文書を開く・削除する。削除は確認してから、本文、要約の順に消す。編集中の文書は開き直し・削除ができない。
+- 移行：1-5の `drafts/current`（1件だけの下書き）に要約がなければ、起動時に要約を作り、ID `current` の文書として一覧に出す。読めないデータは警告して削除する。
 - 保存に失敗したら画面に警告を出す（黙って失敗しない）。
 
 ---

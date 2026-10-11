@@ -31,16 +31,29 @@ test.beforeEach(async ({ page }) => {
   await expect(editorBody(page)).toBeVisible();
 });
 
+function savedDocuments(page: Page): Locator {
+  return page.getByRole('dialog', { name: '保存済みの文書' });
+}
+
+async function typeNewDocument(page: Page, text: string): Promise<void> {
+  await page.getByRole('button', { name: '新規' }).click();
+  await editorBody(page).click();
+  await page.keyboard.type(text);
+  await waitForSaved(page);
+}
+
 test('restores the previous edit after a reload', async ({ page }) => {
   await editorBody(page).click();
   await page.keyboard.type('自動保存のテスト');
   await waitForSaved(page);
 
   await page.reload();
-  await expect(restoreBanner(page)).toContainText('前回の編集内容を復元しますか？');
+  await expect(restoreBanner(page)).toContainText('前回の文書を開きますか？');
+  // Without a cover title or a file name, the document is named by the start of its body.
+  await expect(restoreBanner(page)).toContainText('「自動保存のテスト」');
   await expect(editorBody(page)).not.toContainText('自動保存のテスト');
 
-  await restoreBanner(page).getByRole('button', { name: '復元する' }).click();
+  await restoreBanner(page).getByRole('button', { name: '開く' }).click();
   await expect(editorBody(page)).toContainText('自動保存のテスト');
   await expect(restoreBanner(page)).toBeHidden();
 });
@@ -51,40 +64,170 @@ test('restores an opened file together with its file name', async ({ page }) => 
   const before = await editorBody(page).innerHTML();
 
   await page.reload();
-  await restoreBanner(page).getByRole('button', { name: '復元する' }).click();
+  await restoreBanner(page).getByRole('button', { name: '開く' }).click();
   await expect(page.getByRole('banner')).toContainText('complex-table.html');
   await expect(editorBody(page).locator('td[rowspan="2"]')).toHaveCount(2);
   expect(await editorBody(page).innerHTML()).toBe(before);
 });
 
-test('does not overwrite the draft before the user answers', async ({ page }) => {
+test('typing before answering keeps both documents', async ({ page }) => {
   await editorBody(page).click();
-  await page.keyboard.type('残すべき内容');
+  await page.keyboard.type('前の文書');
   await waitForSaved(page);
 
   await page.reload();
   await expect(restoreBanner(page)).toBeVisible();
-  // Longer than the autosave delay: the empty startup document must not be saved.
-  await page.waitForTimeout(1500);
-  await page.reload();
-  await restoreBanner(page).getByRole('button', { name: '復元する' }).click();
-  await expect(editorBody(page)).toContainText('残すべき内容');
+  await editorBody(page).click();
+  await page.keyboard.type('新しい文書');
+  await waitForSaved(page);
+
+  await restoreBanner(page).getByRole('button', { name: '開く' }).click();
+  await expect(editorBody(page)).toHaveText('前の文書');
+  await page.getByRole('button', { name: '保存済みの文書', exact: true }).click();
+  await expect(savedDocuments(page).getByRole('listitem')).toHaveCount(2);
 });
 
-test('discarding starts empty and removes the draft', async ({ page }) => {
+test('an untouched startup document is not saved', async ({ page }) => {
+  await page.waitForTimeout(1500);
+  await page.getByRole('button', { name: '保存済みの文書', exact: true }).click();
+  await expect(savedDocuments(page)).toContainText('保存済みの文書はありません');
+});
+
+test('closing the banner keeps the saved document', async ({ page }) => {
   await editorBody(page).click();
-  await page.keyboard.type('破棄する内容');
+  await page.keyboard.type('残す内容');
   await waitForSaved(page);
 
   await page.reload();
-  await restoreBanner(page).getByRole('button', { name: '破棄する' }).click();
+  await restoreBanner(page).getByRole('button', { name: '閉じる' }).click();
   await expect(restoreBanner(page)).toBeHidden();
-  await expect(editorBody(page)).not.toContainText('破棄する内容');
+  await expect(editorBody(page)).not.toContainText('残す内容');
 
   await page.reload();
-  await expect(editorBody(page)).toBeVisible();
-  await page.waitForTimeout(500);
-  await expect(restoreBanner(page)).toBeHidden();
+  await expect(restoreBanner(page)).toBeVisible();
+});
+
+test('saves several documents and opens the chosen one', async ({ page }) => {
+  await editorBody(page).click();
+  await page.keyboard.type('文書A');
+  await waitForSaved(page);
+  await typeNewDocument(page, '文書B');
+  await openFixture(page, 'basic.md');
+  await waitForSaved(page);
+
+  await page.getByRole('button', { name: '保存済みの文書', exact: true }).click();
+  const items = savedDocuments(page).getByRole('listitem');
+  // Newest first; the current document is marked and cannot be opened or deleted.
+  await expect(items).toHaveCount(3);
+  await expect(items.nth(0)).toContainText('basic.md');
+  await expect(items.nth(0)).toContainText('編集中');
+  await expect(items.nth(0).getByRole('button', { name: '開く' })).toBeDisabled();
+  await expect(items.nth(0).getByRole('button', { name: '削除' })).toBeDisabled();
+
+  await items.nth(2).getByRole('button', { name: '開く' }).click();
+  await expect(savedDocuments(page)).toBeHidden();
+  await expect(editorBody(page)).toHaveText('文書A');
+  await expect(page.getByRole('banner')).not.toContainText('basic.md');
+
+  // Edits go to the opened document, not to the one opened before it.
+  await page.keyboard.press('End');
+  await page.keyboard.type('（追記）');
+  await waitForSaved(page);
+  await page.getByRole('button', { name: '保存済みの文書', exact: true }).click();
+  await expect(items).toHaveCount(3);
+  await items.filter({ hasText: 'basic.md' }).getByRole('button', { name: '開く' }).click();
+  await expect(editorBody(page).locator('h1')).toHaveCount(1);
+  await expect(page.getByRole('banner')).toContainText('basic.md');
+
+  await page.reload();
+  await page.getByRole('button', { name: '保存済みの文書', exact: true }).click();
+  await expect(items).toHaveCount(3);
+});
+
+test('deletes a saved document after confirmation', async ({ page }) => {
+  await editorBody(page).click();
+  await page.keyboard.type('消す文書');
+  await waitForSaved(page);
+  await typeNewDocument(page, '残る文書');
+
+  await page.getByRole('button', { name: '保存済みの文書', exact: true }).click();
+  const items = savedDocuments(page).getByRole('listitem');
+  await expect(items).toHaveCount(2);
+
+  page.once('dialog', (dialog) => {
+    void dialog.dismiss();
+  });
+  await items.nth(1).getByRole('button', { name: '削除' }).click();
+  await expect(items).toHaveCount(2);
+
+  let message = '';
+  page.once('dialog', (dialog) => {
+    message = dialog.message();
+    void dialog.accept();
+  });
+  await items.nth(1).getByRole('button', { name: '削除' }).click();
+  await expect(items).toHaveCount(1);
+  expect(message).toBe('「消す文書」を削除しますか？この操作は元に戻せません。');
+
+  await page.reload();
+  await expect(restoreBanner(page)).toBeVisible();
+  await page.getByRole('button', { name: '保存済みの文書', exact: true }).click();
+  await expect(items).toHaveCount(1);
+  await expect(items).toContainText('残る文書');
+});
+
+test('a new document starts empty and cannot undo into the previous one', async ({ page }) => {
+  await editorBody(page).click();
+  await page.keyboard.type('前の文書');
+  await waitForSaved(page);
+
+  await page.getByRole('button', { name: '新規' }).click();
+  await expect(editorBody(page)).toHaveText('');
+  await expect(page.getByRole('button', { name: '元に戻す' })).toBeDisabled();
+});
+
+test('opens the draft saved before documents had their own slots', async ({ page }) => {
+  await editorBody(page).click();
+  await page.keyboard.type('以前の下書き');
+  await waitForSaved(page);
+
+  // Turn the saved document into the single "drafts/current" of task 1-5.
+  await page.evaluate(async () => {
+    const request = indexedDB.open('shitate');
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      request.onsuccess = () => {
+        resolve(request.result);
+      };
+      request.onerror = () => {
+        reject(request.error ?? new Error('Failed to open IndexedDB'));
+      };
+    });
+    const tx = db.transaction(['drafts', 'draftMeta'], 'readwrite');
+    const drafts = tx.objectStore('drafts');
+    const cursorRequest = drafts.openCursor();
+    cursorRequest.onsuccess = () => {
+      const cursor = cursorRequest.result;
+      if (!cursor) return;
+      drafts.put(cursor.value, 'current');
+      cursor.delete();
+    };
+    tx.objectStore('draftMeta').clear();
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => {
+        resolve();
+      };
+      tx.onerror = () => {
+        reject(tx.error ?? new Error('Failed to rewrite drafts'));
+      };
+    });
+    db.close();
+  });
+
+  await page.reload();
+  await restoreBanner(page).getByRole('button', { name: '開く' }).click();
+  await expect(editorBody(page)).toHaveText('以前の下書き');
+  await page.getByRole('button', { name: '保存済みの文書', exact: true }).click();
+  await expect(savedDocuments(page).getByRole('listitem')).toHaveCount(1);
 });
 
 test('saves and restores a document with a large image (about 3 MB)', async ({ page }) => {
@@ -101,7 +244,7 @@ test('saves and restores a document with a large image (about 3 MB)', async ({ p
   await waitForSaved(page);
 
   await page.reload();
-  await restoreBanner(page).getByRole('button', { name: '復元する' }).click();
+  await restoreBanner(page).getByRole('button', { name: '開く' }).click();
   await expect(editorBody(page).locator('img')).toHaveAttribute('src', src ?? '');
 });
 

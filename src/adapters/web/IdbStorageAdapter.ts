@@ -5,12 +5,14 @@ import type { StorageAdapter, StoreName } from '../types';
 
 interface ShitateDB extends DBSchema {
   drafts: { key: string; value: unknown };
+  draftMeta: { key: string; value: unknown };
   themes: { key: string; value: unknown };
   settings: { key: string; value: unknown };
 }
 
 export const DEFAULT_DB_NAME = 'shitate';
-const DB_VERSION = 1;
+// 2: added "draftMeta" (task 1-7). The upgrade creates only the missing stores.
+const DB_VERSION = 2;
 
 /** StorageAdapter backed by IndexedDB (design.md §9.1). */
 export class IdbStorageAdapter implements StorageAdapter {

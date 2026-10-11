@@ -169,7 +169,6 @@ test('captions and numbers survive export and reopening', async ({ page }) => {
     /<div class="table-figure is-landscape" id="t-spec0002"><div class="table-caption"><span class="caption-number">表2<\/span>桁数チェック<\/div>/,
   );
 
-  const dialogPromise = page.waitForEvent('dialog');
   const reopenChooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: '開く' }).click();
   await (
@@ -179,7 +178,6 @@ test('captions and numbers survive export and reopening', async ({ page }) => {
     mimeType: 'text/html',
     buffer: Buffer.from(html),
   });
-  await (await dialogPromise).accept();
   await expect(page.getByRole('banner')).toContainText(download.suggestedFilename());
   await expect(editorBody(page).locator('figcaption')).toHaveText(['図1共通レイアウト', '図2ER図']);
   await expect(editorBody(page).locator('.table-caption')).toHaveText([
