@@ -231,9 +231,6 @@ test('page settings and the landscape table survive export and reopening', async
   await panel(page).getByRole('button', { name: 'テーマの設定に戻す' }).click();
   await landscapeButton(page).click();
   await expect(editorBody(page).locator('.table-figure.is-landscape')).toHaveCount(0);
-  page.once('dialog', (dialog) => {
-    void dialog.accept();
-  });
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: '開く' }).click();
   await (

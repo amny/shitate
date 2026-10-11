@@ -1,6 +1,6 @@
-export type StoreName = 'drafts' | 'themes' | 'settings';
+export type StoreName = 'drafts' | 'draftMeta' | 'themes' | 'settings';
 
-export const STORE_NAMES: readonly StoreName[] = ['drafts', 'themes', 'settings'];
+export const STORE_NAMES: readonly StoreName[] = ['drafts', 'draftMeta', 'themes', 'settings'];
 
 export interface OpenedFile {
   name: string;

@@ -1,39 +1,38 @@
-import type { Draft } from '../../core/draft';
+import { draftDisplayName } from '../../core/draft';
+import type { DraftSummary } from '../../core/draft';
+import { formatSavedAt } from './formatSavedAt';
 
 export interface RestoreDraftBannerProps {
-  draft: Draft;
-  onRestore: () => void;
-  onDiscard: () => void;
+  draft: DraftSummary;
+  onOpen: () => void;
+  onShowList: () => void;
+  onDismiss: () => void;
 }
 
-function formatSavedAt(iso: string): string {
-  const date = new Date(iso);
-  return date.toLocaleString('ja-JP', {
-    month: 'numeric',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-/** Asks whether to restore the previous session's draft (design.md §9.2). */
-export function RestoreDraftBanner({ draft, onRestore, onDiscard }: RestoreDraftBannerProps) {
-  const title = draft.data.state.meta.title || draft.fileName;
+/** Offers the latest saved document at startup (design.md §9.2). */
+export function RestoreDraftBanner({
+  draft,
+  onOpen,
+  onShowList,
+  onDismiss,
+}: RestoreDraftBannerProps) {
   return (
     <div className="restore-banner" role="region" aria-label="前回の編集内容">
       <p>
-        前回の編集内容を復元しますか？
+        前回の文書を開きますか？
         <span className="restore-banner-detail">
-          {title ? `「${title}」` : ''}
-          {formatSavedAt(draft.savedAt)} に自動保存
+          「{draftDisplayName(draft)}」{formatSavedAt(draft.savedAt)} に保存
         </span>
       </p>
       <div className="restore-banner-actions">
-        <button type="button" className="is-primary" onClick={onRestore}>
-          復元する
+        <button type="button" className="is-primary" onClick={onOpen}>
+          開く
         </button>
-        <button type="button" onClick={onDiscard}>
-          破棄する
+        <button type="button" onClick={onShowList}>
+          保存済みの文書…
+        </button>
+        <button type="button" onClick={onDismiss}>
+          閉じる
         </button>
       </div>
     </div>

@@ -20,6 +20,8 @@ export interface Autosaver {
   schedule: () => void;
   /** Saves pending changes now (unless paused). */
   flush: () => Promise<void>;
+  /** True while changes are not saved yet (scheduled, saving or failed). */
+  hasPendingChanges: () => boolean;
   pause: () => void;
   resume: () => void;
   dispose: () => void;
@@ -103,6 +105,7 @@ export function createAutosaver({
       }
       await run();
     },
+    hasPendingChanges: () => dirty || running !== null,
     pause: () => {
       paused = true;
       clearTimer();

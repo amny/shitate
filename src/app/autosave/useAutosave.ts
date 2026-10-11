@@ -1,31 +1,138 @@
 import type { Editor, JSONContent } from '@tiptap/react';
 import { useEffect, useState } from 'react';
 import { getStorageAdapter } from '../../adapters';
-import { createAutosaver, CURRENT_DRAFT_KEY, createDraft, parseDraft } from '../../core/draft';
-import type { AutosaveStatus, Autosaver, Draft } from '../../core/draft';
+import type { StorageAdapter } from '../../adapters';
+import {
+  createAutosaver,
+  createDraft,
+  createDraftId,
+  LEGACY_DRAFT_KEY,
+  parseDraft,
+  parseDraftSummary,
+  sortDraftSummaries,
+  summarizeDraft,
+  upsertDraftSummary,
+} from '../../core/draft';
+import type { AutosaveStatus, Autosaver, DraftSummary } from '../../core/draft';
 import { createExtensions } from '../../editor/createEditor';
-import { collectEmbeddedData } from '../documentState';
+import { collectEmbeddedData, replaceDocumentBody } from '../documentState';
 import type { Notice } from '../notice';
 import { useDocumentStore } from '../store/documentStore';
 
 /** design.md §9.2: save 1 second after the last change. */
 export const AUTOSAVE_DELAY_MS = 1000;
 
-export interface AutosaveControl {
-  status: AutosaveStatus;
-  /** A draft from the previous session waiting for the user's decision. */
-  pendingDraft: Draft | null;
-  restoreDraft: () => void;
-  discardDraft: () => Promise<void>;
+const EMPTY_DOC: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] };
+
+export interface DocumentSwitch {
+  /** Loads the next document into the editor and the store. Must be synchronous. */
+  load: () => void;
+  /** Slot of a saved document; omitted for a new slot. */
+  id?: string;
+  /** Saves the loaded document right away (e.g. an opened file). */
+  save: boolean;
 }
 
-async function saveDraft(editor: Editor): Promise<void> {
+export interface AutosaveControl {
+  status: AutosaveStatus;
+  /** Slot of the document being edited. */
+  currentId: string;
+  /** Saved documents, newest first (including the current one once saved). */
+  savedDocuments: DraftSummary[];
+  /** The latest saved document, offered at startup until the user answers. */
+  suggestedDraft: DraftSummary | null;
+  dismissSuggestion: () => void;
+  /**
+   * Saves the current document, then loads another one into its own slot (design.md §9.2).
+   * Resolves to false (and warns) when the current document could not be saved.
+   */
+  switchDocument: (next: DocumentSwitch) => Promise<boolean>;
+  newDocument: () => Promise<void>;
+  openSavedDocument: (id: string) => Promise<void>;
+  deleteSavedDocument: (id: string) => Promise<void>;
+}
+
+async function saveDraft(editor: Editor, id: string): Promise<DraftSummary> {
   const draft = createDraft(
     collectEmbeddedData(editor),
     useDocumentStore.getState().fileName,
     new Date(),
   );
-  await getStorageAdapter().set('drafts', CURRENT_DRAFT_KEY, draft);
+  const summary = summarizeDraft(id, draft);
+  const storage = getStorageAdapter();
+  // Body first: a summary must never point at a missing body.
+  await storage.set('drafts', id, draft);
+  await storage.set('draftMeta', id, summary);
+  return summary;
+}
+
+interface LoadedSummaries {
+  summaries: DraftSummary[];
+  warnings: string[];
+}
+
+/**
+ * Reads the saved documents list. The single draft saved before task 1-7 ("drafts/current")
+ * gets a summary here, so it appears in the list as an ordinary document.
+ */
+async function loadSummaries(storage: StorageAdapter): Promise<LoadedSummaries> {
+  const stored = await storage.list<unknown>('draftMeta');
+  const summaries = stored.flatMap((value) => {
+    const summary = parseDraftSummary(value);
+    return summary ? [summary] : [];
+  });
+  const warnings: string[] = [];
+  const invalid = stored.length - summaries.length;
+  if (invalid > 0) {
+    warnings.push(`保存済みの文書のうち${String(invalid)}件の情報を読み込めませんでした`);
+  }
+  if (summaries.some((summary) => summary.id === LEGACY_DRAFT_KEY)) {
+    return { summaries, warnings };
+  }
+  const legacy = await storage.get<unknown>('drafts', LEGACY_DRAFT_KEY);
+  if (legacy === undefined) {
+    return { summaries, warnings };
+  }
+  const parsed = parseDraft(LEGACY_DRAFT_KEY, legacy, createExtensions());
+  if (!parsed.ok) {
+    // Unreadable and not listed, so it could never be opened or deleted: remove it.
+    await storage.delete('drafts', LEGACY_DRAFT_KEY);
+    warnings.push(`前回の自動保存データを読み込めなかったため削除しました（${parsed.error}）`);
+    return { summaries, warnings };
+  }
+  const summary = summarizeDraft(LEGACY_DRAFT_KEY, parsed.draft);
+  await storage.set('draftMeta', LEGACY_DRAFT_KEY, summary);
+  return { summaries: [...summaries, summary], warnings };
+}
+
+/** Which slot the editor's document is saved to, outside React state so saves read it at save time. */
+interface Slot {
+  id: () => string;
+  setId: (id: string) => void;
+  /** True while a document is being loaded: loading is not an edit to save. */
+  isLoading: () => boolean;
+  /** Runs `load` with change tracking off. */
+  load: (load: () => void) => void;
+}
+
+function createSlot(): Slot {
+  let id = createDraftId();
+  let loading = false;
+  return {
+    id: () => id,
+    setId: (next) => {
+      id = next;
+    },
+    isLoading: () => loading,
+    load: (load) => {
+      loading = true;
+      try {
+        load();
+      } finally {
+        loading = false;
+      }
+    },
+  };
 }
 
 function describeSaveError(error: unknown): string {
@@ -42,19 +149,23 @@ function errorMessage(error: unknown): string {
 }
 
 /**
- * Autosaves the document to IndexedDB and offers to restore the previous draft (design.md §9.2).
- * Saving stays paused until the user has answered the restore question, so that the empty
- * startup document never overwrites the draft.
+ * Autosaves each document to its own slot in IndexedDB, and lists, opens and deletes
+ * the saved documents (design.md §9.2).
  */
 export function useAutosave(editor: Editor, onNotice: (notice: Notice) => void): AutosaveControl {
   const [status, setStatus] = useState<AutosaveStatus>({ kind: 'idle' });
-  const [pendingDraft, setPendingDraft] = useState<Draft | null>(null);
+  const [slot] = useState(createSlot);
+  const [currentId, setCurrentId] = useState(slot.id);
+  const [savedDocuments, setSavedDocuments] = useState<DraftSummary[]>([]);
+  const [suggestedDraft, setSuggestedDraft] = useState<DraftSummary | null>(null);
   const [autosaver] = useState<Autosaver>(() => {
     let previous: AutosaveStatus['kind'] = 'idle';
     return createAutosaver({
-      save: () => saveDraft(editor),
+      save: async () => {
+        const summary = await saveDraft(editor, slot.id());
+        setSavedDocuments((list) => upsertDraftSummary(list, summary));
+      },
       delayMs: AUTOSAVE_DELAY_MS,
-      paused: true,
       onStatus: (next) => {
         setStatus(next);
         // Warn once per run of failures; the header keeps showing the failed state.
@@ -69,48 +180,40 @@ export function useAutosave(editor: Editor, onNotice: (notice: Notice) => void):
     });
   });
 
-  // Look for a draft from the previous session.
+  // Saved documents, and the latest one to offer at startup.
   useEffect(() => {
     let cancelled = false;
-    getStorageAdapter()
-      .get<unknown>('drafts', CURRENT_DRAFT_KEY)
-      .then(
-        (stored) => {
-          if (cancelled) return;
-          if (stored === undefined) {
-            autosaver.resume();
-            return;
-          }
-          const parsed = parseDraft(stored, createExtensions());
-          if (parsed.ok) {
-            setPendingDraft(parsed.draft);
-          } else {
-            onNotice({
-              kind: 'warning',
-              message: `前回の自動保存データを読み込めませんでした（${parsed.error}）`,
-            });
-            autosaver.resume();
-          }
-        },
-        (error: unknown) => {
-          if (cancelled) return;
-          console.error('Failed to read the autosaved draft', error);
-          onNotice({
-            kind: 'warning',
-            message: `前回の自動保存データを確認できませんでした（${errorMessage(error)}）`,
-          });
-          autosaver.resume();
-        },
-      );
+    loadSummaries(getStorageAdapter()).then(
+      ({ summaries, warnings }) => {
+        if (cancelled) return;
+        const [warning] = warnings;
+        if (warning) {
+          onNotice({ kind: 'warning', message: warning });
+        }
+        // Keep what the current document saved while the list was loading.
+        setSavedDocuments((list) => list.reduce(upsertDraftSummary, sortDraftSummaries(summaries)));
+        setSuggestedDraft(sortDraftSummaries(summaries).find((s) => s.id !== slot.id()) ?? null);
+      },
+      (error: unknown) => {
+        if (cancelled) return;
+        console.error('Failed to read the saved documents', error);
+        onNotice({
+          kind: 'warning',
+          message: `保存済みの文書を確認できませんでした（${errorMessage(error)}）`,
+        });
+      },
+    );
     return () => {
       cancelled = true;
     };
-  }, [autosaver, onNotice]);
+  }, [slot, onNotice]);
 
   // Save on body and document info changes, and before the page goes away.
   useEffect(() => {
     const schedule = () => {
-      autosaver.schedule();
+      if (!slot.isLoading()) {
+        autosaver.schedule();
+      }
     };
     const flush = () => {
       void autosaver.flush();
@@ -123,33 +226,98 @@ export function useAutosave(editor: Editor, onNotice: (notice: Notice) => void):
       unsubscribe();
       window.removeEventListener('pagehide', flush);
     };
-  }, [editor, autosaver]);
+  }, [editor, autosaver, slot]);
 
-  const restoreDraft = () => {
-    if (!pendingDraft) return;
-    editor
-      .chain()
-      .setContent(pendingDraft.data.state.doc as JSONContent)
-      .focus('start')
-      .run();
-    useDocumentStore.getState().restore(pendingDraft.data, pendingDraft.fileName);
-    setPendingDraft(null);
-    autosaver.resume();
-  };
-
-  const discardDraft = async () => {
-    try {
-      await getStorageAdapter().delete('drafts', CURRENT_DRAFT_KEY);
-    } catch (error: unknown) {
-      console.error('Failed to delete the autosaved draft', error);
+  const switchDocument = async ({ load, id, save }: DocumentSwitch): Promise<boolean> => {
+    await autosaver.flush();
+    if (autosaver.hasPendingChanges()) {
       onNotice({
         kind: 'error',
-        message: `前回の自動保存データを削除できませんでした（${errorMessage(error)}）`,
+        message:
+          '編集中の文書を保存できなかったため、文書を切り替えませんでした。HTMLをエクスポートして保存してください。',
       });
+      return false;
     }
-    setPendingDraft(null);
-    autosaver.resume();
+    slot.load(load);
+    const nextId = id ?? createDraftId();
+    slot.setId(nextId);
+    setCurrentId(nextId);
+    setSuggestedDraft(null);
+    setStatus({ kind: 'idle' });
+    if (save) {
+      autosaver.schedule();
+    }
+    return true;
   };
 
-  return { status, pendingDraft, restoreDraft, discardDraft };
+  const newDocument = async () => {
+    await switchDocument({
+      save: false,
+      load: () => {
+        replaceDocumentBody(editor, EMPTY_DOC);
+        useDocumentStore.getState().resetForImportedBody(null);
+      },
+    });
+  };
+
+  const openSavedDocument = async (id: string) => {
+    let stored: unknown;
+    try {
+      stored = await getStorageAdapter().get<unknown>('drafts', id);
+    } catch (error: unknown) {
+      console.error(`Failed to read the saved document "${id}"`, error);
+      onNotice({ kind: 'error', message: `文書を読み込めませんでした（${errorMessage(error)}）` });
+      return;
+    }
+    if (stored === undefined) {
+      onNotice({ kind: 'error', message: '文書の保存データが見つかりませんでした' });
+      return;
+    }
+    const parsed = parseDraft(id, stored, createExtensions());
+    if (!parsed.ok) {
+      onNotice({ kind: 'error', message: `文書を読み込めませんでした（${parsed.error}）` });
+      return;
+    }
+    const { draft } = parsed;
+    await switchDocument({
+      id,
+      save: false,
+      load: () => {
+        replaceDocumentBody(editor, draft.data.state.doc as JSONContent);
+        useDocumentStore.getState().restore(draft.data, draft.fileName);
+      },
+    });
+  };
+
+  const deleteSavedDocument = async (id: string) => {
+    if (id === slot.id()) {
+      return;
+    }
+    try {
+      const storage = getStorageAdapter();
+      // Body first: if removing the summary fails, the entry stays listed and can be deleted again.
+      await storage.delete('drafts', id);
+      await storage.delete('draftMeta', id);
+    } catch (error: unknown) {
+      console.error(`Failed to delete the saved document "${id}"`, error);
+      onNotice({ kind: 'error', message: `文書を削除できませんでした（${errorMessage(error)}）` });
+      return;
+    }
+    setSavedDocuments((list) => list.filter((s) => s.id !== id));
+    setSuggestedDraft((suggested) => (suggested?.id === id ? null : suggested));
+  };
+
+  return {
+    status,
+    currentId,
+    savedDocuments,
+    suggestedDraft,
+    dismissSuggestion: () => {
+      setSuggestedDraft(null);
+    },
+    switchDocument,
+    newDocument,
+    openSavedDocument,
+    deleteSavedDocument,
+  };
 }

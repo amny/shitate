@@ -126,7 +126,7 @@ test('the selected theme is autosaved and restored', async ({ page }) => {
   await page.reload();
   await page
     .getByRole('region', { name: '前回の編集内容' })
-    .getByRole('button', { name: '復元する' })
+    .getByRole('button', { name: '開く' })
     .click();
   await expect(themeRadio(page, 'シンプル')).toBeChecked();
   await expect(page.locator('style[data-theme-id="simple"]')).toHaveCount(1);
@@ -139,9 +139,6 @@ test('a theme embedded in an opened file stays selectable', async ({ page }) => 
     .replace('"id":"simple","name":"シンプル"', '"id":"customer","name":"顧客様向け"')
     .replace('"themeId":"simple"', '"themeId":"customer"');
 
-  page.once('dialog', (dialog) => {
-    void dialog.accept();
-  });
   await openFile(page, 'customer.html', Buffer.from(customized));
   await expect(themeRadio(page, '顧客様向け')).toBeChecked();
 

@@ -44,28 +44,26 @@ test('opens TipTap JSON', async ({ page }) => {
   await expect(editorBody(page).locator('h5')).toHaveCount(2);
 });
 
-test('asks before replacing existing content, and can be undone', async ({ page }) => {
+test('opens over existing content without asking, as a new document', async ({ page }) => {
+  let dialogShown = false;
+  page.on('dialog', (dialog) => {
+    dialogShown = true;
+    void dialog.dismiss();
+  });
   await editorBody(page).click();
   await page.keyboard.type('書きかけの本文');
 
-  // Wait for each dialog explicitly: opening is async, so a listener registered for the
-  // next step could otherwise also receive the previous dialog.
-  const firstDialog = page.waitForEvent('dialog');
   await openFile(page, 'basic.md', fixture('basic.md'));
-  await (await firstDialog).dismiss();
-  await expect(editorBody(page)).toContainText('書きかけの本文');
-  await expect(editorBody(page).locator('h1')).toHaveCount(0);
-
-  const secondDialog = page.waitForEvent('dialog');
-  await openFile(page, 'basic.md', fixture('basic.md'));
-  const dialog = await secondDialog;
-  expect(dialog.message()).toContain('現在の内容を破棄');
-  await dialog.accept();
   await expect(editorBody(page).locator('h1')).toHaveCount(1);
   await expect(editorBody(page)).not.toContainText('書きかけの本文');
+  expect(dialogShown).toBe(false);
 
-  await page.getByRole('button', { name: '元に戻す' }).click();
-  await expect(editorBody(page)).toContainText('書きかけの本文');
+  // The previous document is kept in its own slot, so undo does not bring it back here.
+  await expect(page.getByRole('button', { name: '元に戻す' })).toBeDisabled();
+  await page.getByRole('button', { name: '保存済みの文書', exact: true }).click();
+  await expect(
+    page.getByRole('dialog', { name: '保存済みの文書' }).getByRole('listitem'),
+  ).toHaveCount(2);
 });
 
 test('shows an error for an unsupported file', async ({ page }) => {
