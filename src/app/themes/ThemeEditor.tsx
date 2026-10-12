@@ -14,6 +14,7 @@ import {
 } from '../../core/theme/themeFile';
 import type { Notice } from '../notice';
 import { useDocumentStore } from '../store/documentStore';
+import { BrandLogo } from '../layout/BrandLogo';
 import { ContractReference } from './ContractReference';
 import { CssEditor } from './CssEditor';
 import { ThemePreview } from './ThemePreview';
@@ -205,7 +206,7 @@ export function ThemeEditor({ editor, onClose }: ThemeEditorProps) {
   return (
     <div className="theme-editor" role="dialog" aria-modal="true" aria-label="テーマ編集">
       <header className="app-header">
-        <span className="app-brand">Shitate</span>
+        <BrandLogo />
         <span className="app-header-divider" aria-hidden="true" />
         <button
           type="button"

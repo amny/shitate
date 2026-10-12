@@ -49,9 +49,22 @@ body {
 }
 
 .app-brand {
-  font-size: 19px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 9px;
+}
+
+.app-brand-icon {
+  display: block;
+  width: 26px;
+  height: 26px;
+}
+
+.app-brand-name {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   color: var(--app-brand);
 }
 

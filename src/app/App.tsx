@@ -9,6 +9,7 @@ import { AutosaveStatusView } from './autosave/AutosaveStatusView';
 import { RestoreDraftBanner } from './autosave/RestoreDraftBanner';
 import { SavedDocumentsDialog } from './autosave/SavedDocumentsDialog';
 import { useAutosave } from './autosave/useAutosave';
+import { BrandLogo } from './layout/BrandLogo';
 import { Toolbar } from './layout/Toolbar';
 import { DocumentFooterPreview, DocumentPreface } from './DocumentPreface';
 import { DocumentSettingsPanel } from './panels/DocumentSettingsPanel';
@@ -80,7 +81,7 @@ export function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <span className="app-brand">Shitate</span>
+        <BrandLogo />
         {fileName && (
           <>
             <span className="app-header-divider" aria-hidden="true" />
