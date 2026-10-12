@@ -72,19 +72,42 @@ interface LoadedSummaries {
 }
 
 /**
- * Reads the saved documents list. The single draft saved before task 1-7 ("drafts/current")
+ * Rebuilds a malformed summary from its body. When the body is missing or unreadable,
+ * deletes both (the document could never be opened) and resolves to null.
+ */
+async function repairSummary(storage: StorageAdapter, id: string): Promise<DraftSummary | null> {
+  const stored = await storage.get<unknown>('drafts', id);
+  const parsed = stored === undefined ? undefined : parseDraft(id, stored, createExtensions());
+  if (!parsed?.ok) {
+    // Body first, as when the user deletes a document.
+    await storage.delete('drafts', id);
+    await storage.delete('draftMeta', id);
+    return null;
+  }
+  const summary = summarizeDraft(id, parsed.draft);
+  await storage.set('draftMeta', id, summary);
+  return summary;
+}
+
+/**
+ * Reads the saved documents list. Malformed summaries are rebuilt or removed, so their
+ * warning is shown only once. The single draft saved before task 1-7 ("drafts/current")
  * gets a summary here, so it appears in the list as an ordinary document.
  */
 async function loadSummaries(storage: StorageAdapter): Promise<LoadedSummaries> {
-  const stored = await storage.list<unknown>('draftMeta');
-  const summaries = stored.flatMap((value) => {
-    const summary = parseDraftSummary(value);
-    return summary ? [summary] : [];
-  });
+  const stored = await storage.entries<unknown>('draftMeta');
+  const loaded = await Promise.all(
+    stored.map(async ([id, value]) => {
+      const summary = parseDraftSummary(value);
+      // A summary under another key could not be opened or deleted from the list.
+      return summary?.id === id ? summary : repairSummary(storage, id);
+    }),
+  );
+  const summaries = loaded.filter((summary) => summary !== null);
   const warnings: string[] = [];
-  const invalid = stored.length - summaries.length;
-  if (invalid > 0) {
-    warnings.push(`保存済みの文書のうち${String(invalid)}件の情報を読み込めませんでした`);
+  const removed = stored.length - summaries.length;
+  if (removed > 0) {
+    warnings.push(`読み込めない保存済みの文書が${String(removed)}件あったため削除しました`);
   }
   if (summaries.some((summary) => summary.id === LEGACY_DRAFT_KEY)) {
     return { summaries, warnings };

@@ -45,6 +45,18 @@ export class IdbStorageAdapter implements StorageAdapter {
     });
   }
 
+  async entries<T>(store: StoreName): Promise<[string, T][]> {
+    return this.#run(`list entries of ${store}`, async (db) => {
+      const tx = db.transaction(store);
+      const [keys, values] = await Promise.all([
+        tx.store.getAllKeys(),
+        tx.store.getAll(),
+        tx.done,
+      ]);
+      return keys.map((key, i): [string, T] => [key, values[i] as T]);
+    });
+  }
+
   /** Closes the connection. The next operation reopens it. */
   async close(): Promise<void> {
     const dbPromise = this.#dbPromise;

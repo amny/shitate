@@ -31,4 +31,6 @@ export interface StorageAdapter {
   set(store: StoreName, key: string, value: unknown): Promise<void>;
   delete(store: StoreName, key: string): Promise<void>;
   list<T>(store: StoreName): Promise<T[]>;
+  /** All [key, value] pairs in a store, in key order. */
+  entries<T>(store: StoreName): Promise<[string, T][]>;
 }

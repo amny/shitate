@@ -230,6 +230,56 @@ test('opens the draft saved before documents had their own slots', async ({ page
   await expect(savedDocuments(page).getByRole('listitem')).toHaveCount(1);
 });
 
+test('rebuilds or removes malformed summaries once', async ({ page }) => {
+  await editorBody(page).click();
+  await page.keyboard.type('要約が壊れた文書');
+  await waitForSaved(page);
+
+  // Break the saved summary, and add a broken summary whose body is unreadable.
+  await page.evaluate(async () => {
+    const request = indexedDB.open('shitate');
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      request.onsuccess = () => {
+        resolve(request.result);
+      };
+      request.onerror = () => {
+        reject(request.error ?? new Error('Failed to open IndexedDB'));
+      };
+    });
+    const tx = db.transaction(['drafts', 'draftMeta'], 'readwrite');
+    const meta = tx.objectStore('draftMeta');
+    const cursorRequest = meta.openCursor();
+    cursorRequest.onsuccess = () => {
+      const cursor = cursorRequest.result;
+      if (!cursor) return;
+      cursor.update({ id: cursor.key });
+    };
+    tx.objectStore('drafts').put({ broken: true }, 'd-broken0000');
+    meta.put('broken', 'd-broken0000');
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => {
+        resolve();
+      };
+      tx.onerror = () => {
+        reject(tx.error ?? new Error('Failed to break summaries'));
+      };
+    });
+    db.close();
+  });
+
+  await page.reload();
+  await expect(page.getByRole('alert')).toContainText(
+    '読み込めない保存済みの文書が1件あったため削除しました',
+  );
+  await expect(restoreBanner(page)).toContainText('「要約が壊れた文書」');
+
+  await page.reload();
+  await expect(restoreBanner(page)).toContainText('「要約が壊れた文書」');
+  await expect(page.getByRole('alert')).toBeHidden();
+  await page.getByRole('button', { name: '保存済みの文書', exact: true }).click();
+  await expect(savedDocuments(page).getByRole('listitem')).toHaveCount(1);
+});
+
 test('saves and restores a document with a large image (about 3 MB)', async ({ page }) => {
   const header = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
   const buffer = Buffer.concat([header, Buffer.alloc(3 * 1024 * 1024, 7)]);
