@@ -48,6 +48,16 @@ describe('IdbStorageAdapter', () => {
     expect(await adapter.list('drafts')).toEqual([]);
   });
 
+  it('lists all keys and values in a store', async () => {
+    await adapter.set('draftMeta', 'b', { id: 'b' });
+    await adapter.set('draftMeta', 'a', 'broken');
+    expect(await adapter.entries('draftMeta')).toEqual([
+      ['a', 'broken'],
+      ['b', { id: 'b' }],
+    ]);
+    expect(await adapter.entries('drafts')).toEqual([]);
+  });
+
   it('keeps stores independent', async () => {
     await adapter.set('drafts', 'same-key', 'draft');
     await adapter.set('themes', 'same-key', 'theme');
