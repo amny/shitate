@@ -1,5 +1,5 @@
 import type { Editor } from '@tiptap/react';
-import { useId, useMemo, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import type { Theme } from '../../core/model';
 import { BUILTIN_THEMES } from '../../core/theme/builtinThemes';
 import { checkThemeContract, formatViolationForUser } from '../../core/theme/contract';
@@ -77,6 +77,7 @@ export function ThemeEditor({ editor, onClose }: ThemeEditorProps) {
   const [tab, setTab] = useState<EditorTab>('css');
   const [saving, setSaving] = useState(false);
   const id = useId();
+  const mainRef = useRef<HTMLElement>(null);
 
   const { draft, source } = session;
   const dirty = JSON.stringify(draft) !== JSON.stringify(session.saved);
@@ -336,7 +337,7 @@ export function ThemeEditor({ editor, onClose }: ThemeEditorProps) {
           </div>
         </nav>
 
-        <section className="theme-editor-main" aria-label="テーマの内容">
+        <section ref={mainRef} className="theme-editor-main" aria-label="テーマの内容">
           <div className="theme-editor-name">
             <div className="settings-field">
               <label htmlFor={`${id}-name`}>テーマ名</label>
@@ -411,7 +412,7 @@ export function ThemeEditor({ editor, onClose }: ThemeEditorProps) {
           </div>
         </section>
 
-        <ThemePreview editor={editor} theme={draft} />
+        <ThemePreview editor={editor} theme={draft} mainRef={mainRef} />
       </div>
 
       <div className="theme-editor-notice" role="status">
