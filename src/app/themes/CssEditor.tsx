@@ -16,7 +16,7 @@ const editorTheme = EditorView.theme({
     lineHeight: '1.75',
   },
   '.cm-gutters': { backgroundColor: '#f7f5f1', borderRight: '1px solid #ece9e2' },
-  '&.cm-focused': { outline: '2px solid #4346d8', outlineOffset: '-2px' },
+  '&.cm-focused': { outline: '2px solid #1f3a5f', outlineOffset: '-2px' },
 });
 
 /** CSS editor (CodeMirror 6, design.md §8.4). Controlled: external changes replace the text. */

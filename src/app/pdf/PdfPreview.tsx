@@ -2,6 +2,7 @@ import type { Editor } from '@tiptap/react';
 import { useEffect, useRef, useState } from 'react';
 import { PDF_PREVIEW_PATH } from '../../pdf/api';
 import type { PdfFrameApi, PdfFrameEvent, PdfFrameWindow, PdfView } from '../../pdf/api';
+import { BrandLogo } from '../layout/BrandLogo';
 import { buildPdfRequest, pdfTitle } from './pdfRequest';
 
 type Status =
@@ -90,7 +91,7 @@ export function PdfPreview({ editor, onClose }: PdfPreviewProps) {
   return (
     <div className="pdf-preview" role="dialog" aria-modal="true" aria-label="PDFプレビュー">
       <header className="app-header">
-        <span className="app-brand">Shitate</span>
+        <BrandLogo />
         <span className="app-header-divider" aria-hidden="true" />
         <button type="button" className="app-header-button" onClick={onClose}>
           ‹ 編集に戻る
