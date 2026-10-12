@@ -198,3 +198,106 @@ test('user themes are kept after reloading', async ({ page }) => {
   await expect(panel(page).getByRole('radio', { name: /標準（編集）/ })).toBeVisible();
   await expect(panel(page).getByText('標準をもとに編集')).toBeVisible();
 });
+
+test.describe('preview width', () => {
+  const preview = (page: Page) =>
+    themeEditor(page).getByRole('complementary', { name: 'プレビュー' });
+  const separator = (page: Page) =>
+    themeEditor(page).getByRole('separator', { name: 'プレビューの幅' });
+  const screenFrame = (page: Page) =>
+    themeEditor(page).locator('iframe[title="テーマのプレビュー（画面）"]');
+
+  async function previewWidth(page: Page): Promise<number> {
+    const box = await preview(page).boundingBox();
+    if (!box) throw new Error('preview is not visible');
+    return box.width;
+  }
+
+  /** The scale applied to the screen preview frame. */
+  async function frameScale(page: Page): Promise<number> {
+    return screenFrame(page).evaluate(
+      (frame) => new DOMMatrix(getComputedStyle(frame).transform).a,
+    );
+  }
+
+  test('dragging the separator resizes the preview and scales the page to fit', async ({
+    page,
+  }) => {
+    await openThemeEditor(page);
+    await expect(screenFrame(page)).toBeVisible();
+    const before = await previewWidth(page);
+    const scaleBefore = await frameScale(page);
+    const handle = await separator(page).boundingBox();
+    if (!handle) throw new Error('separator is not visible');
+    const x = handle.x + handle.width / 2;
+    const y = handle.y + handle.height / 2;
+
+    // Moving the separator left widens the preview, also when the pointer passes over the frame.
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x - 150, y, { steps: 5 });
+    await page.mouse.up();
+    await expect.poll(() => previewWidth(page)).toBeCloseTo(before + 150, 0);
+    await expect.poll(() => frameScale(page)).toBeGreaterThan(scaleBefore);
+
+    await page.mouse.move(x - 150, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 100, y, { steps: 5 });
+    await page.mouse.up();
+    await expect.poll(() => previewWidth(page)).toBeCloseTo(before - 100, 0);
+    await expect.poll(() => frameScale(page)).toBeLessThan(scaleBefore);
+
+    // The minimum width holds.
+    await page.mouse.move(x + 100, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 600, y, { steps: 5 });
+    await page.mouse.up();
+    await expect.poll(() => previewWidth(page)).toBe(280);
+
+    await separator(page).dblclick();
+    await expect.poll(() => previewWidth(page)).toBeCloseTo(before, 0);
+  });
+
+  test('the separator resizes the preview with the keyboard', async ({ page }) => {
+    await openThemeEditor(page);
+    const before = await previewWidth(page);
+    await separator(page).focus();
+
+    await page.keyboard.press('ArrowLeft');
+    await expect.poll(() => previewWidth(page)).toBeCloseTo(before + 20, 0);
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight');
+    await expect.poll(() => previewWidth(page)).toBeCloseTo(before - 20, 0);
+    await expect(separator(page)).toHaveAttribute('aria-valuenow', String(Math.round(before - 20)));
+
+    await page.keyboard.press('Home');
+    await expect.poll(() => previewWidth(page)).toBe(280);
+    await page.keyboard.press('End');
+    const max = Number(await separator(page).getAttribute('aria-valuemax'));
+    await expect.poll(() => previewWidth(page)).toBeCloseTo(max, 0);
+    // The editing area keeps its minimum width.
+    const main = await themeEditor(page)
+      .getByRole('region', { name: 'テーマの内容' })
+      .boundingBox();
+    expect(main?.width).toBeCloseTo(360, 0);
+  });
+
+  test('the width is kept while the theme editor is open and reset when it is reopened', async ({
+    page,
+  }) => {
+    await openThemeEditor(page);
+    const before = await previewWidth(page);
+    await separator(page).focus();
+    await page.keyboard.press('Home');
+    await expect.poll(() => previewWidth(page)).toBe(280);
+
+    // Switching the preview mode and the theme keeps the width.
+    await themeEditor(page).getByRole('tab', { name: 'PDF' }).click();
+    await themeList(page).getByRole('button', { name: 'シンプル' }).click();
+    expect(await previewWidth(page)).toBe(280);
+
+    await themeEditor(page).getByRole('button', { name: '‹ 編集に戻る' }).click();
+    await openThemeEditor(page);
+    await expect.poll(() => previewWidth(page)).toBeCloseTo(before, 0);
+  });
+});
