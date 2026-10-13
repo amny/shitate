@@ -228,3 +228,48 @@ test('the delivered HTML is unchanged by the PDF preparation', async ({ page }) 
   expect(withoutViewer).toBe(request?.html);
   expect(exported).toMatch(/<span class="heading-number">1<\/span>はじめに/);
 });
+
+test('shrinks a table with resized columns to the page width', async ({ page }) => {
+  // 4 columns of 75 / 150 / 225 / 300px (750px): wider than A4 portrait with the normal
+  // margin (174mm ≈ 658px). The exported table gets `style="width: 750px"`.
+  const cell = (type: string, width: number, text: string) => ({
+    type,
+    attrs: { colspan: 1, rowspan: 1, colwidth: [width] },
+    content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+  });
+  const table = {
+    type: 'table',
+    content: ['tableHeader', 'tableCell'].map((type, row) => ({
+      type: 'tableRow',
+      content: [1, 2, 3, 4].map((n) => cell(type, n * 75, `R${String(row)}C${String(n)}`)),
+    })),
+  };
+  await page.evaluate(
+    (content) => {
+      (window as TestWindow).__shitateEditor?.commands.setContent({ type: 'doc', content });
+    },
+    [table],
+  );
+  await openPreview(page);
+  // Show the page with the table (hidden pages have no layout box to measure).
+  const tableLocator = frame(page).locator('.doc-body table');
+  const pageIndex = Number(
+    await tableLocator.evaluate((el: Element) =>
+      el.closest('[data-vivliostyle-page-container]')?.getAttribute('data-vivliostyle-page-index'),
+    ),
+  );
+  for (let index = 0; index < pageIndex; index++) {
+    await preview(page).getByRole('button', { name: '次のページ' }).click();
+  }
+  await expect(tableLocator).toBeVisible();
+
+  const widths = await tableLocator.evaluate((el: HTMLElement) => ({
+    table: el.getBoundingClientRect().width,
+    body: el.closest('.doc-body')?.getBoundingClientRect().width ?? 0,
+    cols: [...el.querySelectorAll('col')].map((col) => col.getBoundingClientRect().width),
+  }));
+  expect(widths.body).toBeGreaterThan(0);
+  expect(widths.table).toBeLessThanOrEqual(widths.body + 0.5);
+  // The columns keep their order of widths.
+  expect(widths.cols).toEqual([...widths.cols].sort((a, b) => a - b));
+});

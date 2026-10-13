@@ -61,6 +61,14 @@ export const PDF_BASE_CSS = `
   break-inside: avoid;
 }
 
+/*
+ * A table with resized columns has an inline pixel width (TipTap's colgroup), which can be
+ * wider than the page box and would be cut off. Shrink it to the page width instead.
+ */
+.doc .doc-body table {
+  max-width: 100%;
+}
+
 /* Repeat the header row on every page of a split table. */
 .doc .doc-body thead {
   display: table-header-group;
