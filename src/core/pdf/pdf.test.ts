@@ -46,6 +46,26 @@ describe('buildPageCss', () => {
   });
 });
 
+describe('buildPageCss: page breaks before headings', () => {
+  it('adds no break by default', () => {
+    expect(buildPageCss(page({}))).not.toContain('break-before');
+  });
+
+  it('breaks before H1 only at level 1', () => {
+    expect(buildPageCss(page({ breakBeforeHeadingLevel: 1 }))).toContain(
+      '\n.doc .doc-body h1 { break-before: page; }',
+    );
+  });
+
+  it('breaks before H1–H3 at level 3', () => {
+    const css = buildPageCss(page({ breakBeforeHeadingLevel: 3 }));
+    expect(css).toContain(
+      '.doc .doc-body h1, .doc .doc-body h2, .doc .doc-body h3 { break-before: page; }',
+    );
+    expect(css).not.toContain('h4');
+  });
+});
+
 describe('resolvePageSettings', () => {
   const theme: ThemeSettings = { tocDepth: 3, page: page({ size: 'A3' }) };
 

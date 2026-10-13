@@ -145,6 +145,7 @@ export interface PageSettings {
   customMm?: { width: number; height: number }; // size が "custom" のとき
   margin: "narrow" | "normal" | "wide";  // 既定 "normal"
   baseFontPt: number;                    // 本文の基準文字サイズ 9〜12（既定 10.5）
+  breakBeforeHeadingLevel?: 1 | 2 | 3 | 4 | 5; // この深さまでの見出しの前で改ページ（未指定は改ページしない）
 }
 
 // エクスポートHTMLに埋め込むJSON
@@ -497,8 +498,9 @@ type StoreName = "drafts" | "draftMeta" | "themes" | "settings";
 - サイズはキーワードではなくmmで書き込む（A4 210×297 / A3 297×420 / B4 はJIS B4 257×364）。
 - `custom` の場合は `customMm` の幅・高さをmmで書き込む（入力範囲は100〜1000mm）。短い辺を幅とし、向きは `orientation` で決める。
 - `--base-font-size` はエディター表示とエクスポートHTMLにも適用し（`buildThemeVars` の `:root` 変数。2-9）、編集画面・納品HTML・PDFで文字の大きさの比率を揃える。
+- 見出し前の改ページ：`breakBeforeHeadingLevel` が N のとき、本文の H1〜HN の前で改ページする（`.doc .doc-body h1, … { break-before: page; }` を `buildPageCss` が出力する）。未指定なら出力しない（既定）。任意項目のため、項目の無い既存データはそのまま読み込め、`EmbeddedData.version` は上げない。本文先頭や目次の直後の見出しでは、改ページが重なるだけで空白ページは入らない。
 - `landscape: true` の表は、PDF上で名前付きページ `landscape` に配置する。ブラウザ表示では通常どおり表示する。
-- ページ設定のUIは、文書設定パネル（テーマタブ）に「ページ」セクションとして置く（サイズ、向き、余白、基準文字サイズ）。変更は文書ごとの上書き（`settingsOverride.page`）に保存し、テーマは変えない。「テーマの設定に戻す」で上書きを削除する。カスタムの幅・高さが範囲外・数値でないときは保存せずエラーを表示する。
+- ページ設定のUIは、文書設定パネル（テーマタブ）に「ページ」セクションとして置く（サイズ、向き、余白、基準文字サイズ、見出しの前で改ページ）。変更は文書ごとの上書き（`settingsOverride.page`）に保存し、テーマは変えない。「テーマの設定に戻す」で上書きを削除する。カスタムの幅・高さが範囲外・数値でないときは保存せずエラーを表示する。
 - 表の横向き指定は表の操作メニューの「PDFで横向き」で切り替える（`toggleTableLandscape`）。キャプション付きの表（`tableFigure`）だけが対象。横向き指定した表には、編集画面だけ「PDFで横向き」の印を表示する（`editor-ui.css`）。
 
 ---
