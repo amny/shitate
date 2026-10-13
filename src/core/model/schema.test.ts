@@ -118,6 +118,16 @@ describe('pageSettingsSchema', () => {
       false,
     );
   });
+
+  it.each([1, 5])('accepts breakBeforeHeadingLevel %d', (breakBeforeHeadingLevel) => {
+    const page = { ...DEFAULT_PAGE_SETTINGS, breakBeforeHeadingLevel };
+    expect(pageSettingsSchema.safeParse(page).success).toBe(true);
+  });
+
+  it.each([0, 6, 2.5, '2'])('rejects breakBeforeHeadingLevel %j', (breakBeforeHeadingLevel) => {
+    const page = { ...DEFAULT_PAGE_SETTINGS, breakBeforeHeadingLevel };
+    expect(pageSettingsSchema.safeParse(page).success).toBe(false);
+  });
 });
 
 describe('themeSettingsSchema', () => {

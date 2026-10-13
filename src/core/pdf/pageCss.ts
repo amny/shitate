@@ -35,10 +35,16 @@ function sizeValue([width, height]: [number, number]): string {
   return `${String(width)}mm ${String(height)}mm`;
 }
 
+/** `.doc .doc-body h1, …` up to the given level. */
+function headingSelectors(level: number): string {
+  return Array.from({ length: level }, (_, i) => `.doc .doc-body h${String(i + 1)}`).join(', ');
+}
+
 /**
  * Page size, margin and base font size for the PDF (design.md §10.1). Written as plain values,
  * not CSS variables, because `@page { size }` does not resolve variables reliably.
- * The named page `landscape` holds tables marked as landscape.
+ * The named page `landscape` holds tables marked as landscape. With `breakBeforeHeadingLevel`
+ * N, body headings H1–HN start a new page.
  */
 export function buildPageCss(page: PageSettings): string {
   const [short, long] = paperMm(page);
@@ -50,5 +56,8 @@ export function buildPageCss(page: PageSettings): string {
     `@page landscape { size: ${sizeValue(landscape)}; }`,
     `.doc { --base-font-size: ${String(page.baseFontPt)}pt; }`,
     '.doc .doc-body .table-figure.is-landscape { page: landscape; }',
+    ...(page.breakBeforeHeadingLevel === undefined
+      ? []
+      : [`${headingSelectors(page.breakBeforeHeadingLevel)} { break-before: page; }`]),
   ].join('\n');
 }

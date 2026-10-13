@@ -4,6 +4,7 @@ import {
   BASE_FONT_PT_MIN,
   CUSTOM_PAGE_MM_MAX,
   CUSTOM_PAGE_MM_MIN,
+  headingLevelSchema,
   pageMarginSchema,
   pageOrientationSchema,
   pageSizeSchema,
@@ -28,6 +29,15 @@ const FONT_SIZES: readonly number[] = Array.from(
   (_, i) => BASE_FONT_PT_MIN + i * 0.5,
 );
 
+const BREAK_LEVEL_OPTIONS: readonly { value: string; label: string }[] = [
+  { value: '', label: 'しない' },
+  { value: '1', label: 'H1' },
+  { value: '2', label: 'H2まで' },
+  { value: '3', label: 'H3まで' },
+  { value: '4', label: 'H4まで' },
+  { value: '5', label: 'H5まで' },
+];
+
 const DEFAULT_CUSTOM_MM = { width: 210, height: 297 };
 
 /** A custom length in mm, or an error message (design.md §10.1: 100–1000mm). */
@@ -46,7 +56,7 @@ interface PageSettingsFieldsProps {
 }
 
 /**
- * Page size, orientation, margin and base font size (design.md §10.1). Used for the document's
+ * Page size, orientation, margin, base font size and heading page breaks (design.md §10.1). Used for the document's
  * override (文書設定) and for the theme's own settings (テーマ編集).
  */
 export function PageSettingsFields({ value: page, onChange }: PageSettingsFieldsProps) {
@@ -135,6 +145,33 @@ export function PageSettingsFields({ value: page, onChange }: PageSettingsFields
           {FONT_SIZES.map((pt) => (
             <option key={pt} value={String(pt)}>
               {pt}pt
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="settings-row">
+        <label htmlFor={`${id}-break`}>見出しの前で改ページ</label>
+        <select
+          id={`${id}-break`}
+          className="settings-select"
+          value={
+            page.breakBeforeHeadingLevel === undefined ? '' : String(page.breakBeforeHeadingLevel)
+          }
+          onChange={(event) => {
+            const { breakBeforeHeadingLevel: _previous, ...rest } = page;
+            onChange(
+              event.target.value === ''
+                ? rest
+                : {
+                    ...rest,
+                    breakBeforeHeadingLevel: headingLevelSchema.parse(Number(event.target.value)),
+                  },
+            );
+          }}
+        >
+          {BREAK_LEVEL_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
             </option>
           ))}
         </select>

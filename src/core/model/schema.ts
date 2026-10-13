@@ -71,6 +71,15 @@ export const CUSTOM_PAGE_MM_MAX = 1000;
 export const BASE_FONT_PT_MIN = 9;
 export const BASE_FONT_PT_MAX = 12;
 
+/** Deepest heading level a page break goes before (design.md §10.1); same range as tocDepth. */
+export const headingLevelSchema = z.union([
+  z.literal(1),
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+  z.literal(5),
+]);
+
 const customMmLength = z.number().min(CUSTOM_PAGE_MM_MIN).max(CUSTOM_PAGE_MM_MAX);
 
 export const pageSettingsSchema = z
@@ -80,6 +89,7 @@ export const pageSettingsSchema = z
     customMm: z.object({ width: customMmLength, height: customMmLength }).optional(),
     margin: pageMarginSchema,
     baseFontPt: z.number().min(BASE_FONT_PT_MIN).max(BASE_FONT_PT_MAX),
+    breakBeforeHeadingLevel: headingLevelSchema.optional(),
   })
   .refine((page) => page.size !== 'custom' || page.customMm !== undefined, {
     message: 'size が "custom" のときは customMm が必要です',

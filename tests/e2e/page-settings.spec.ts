@@ -47,9 +47,9 @@ const tableFigure = (caption: string, text: string) => ({
   type: 'tableFigure',
   content: [{ type: 'tableCaption', content: [{ type: 'text', text: caption }] }, table(text)],
 });
-const heading = (text: string) => ({
+const heading = (text: string, level = 1) => ({
   type: 'heading',
-  attrs: { level: 1 },
+  attrs: { level },
   content: [{ type: 'text', text }],
 });
 
@@ -62,6 +62,15 @@ async function previewPageSizes(page: Page): Promise<string[]> {
         const mm = (px: string) => Math.round((parseFloat(px) * 25.4) / 96);
         return `${String(mm(c.style.width))}x${String(mm(c.style.height))}mm`;
       }),
+    );
+}
+
+/** Text of every page of the preview, with whitespace collapsed. */
+async function previewPageTexts(page: Page): Promise<string[]> {
+  return frame(page)
+    .locator('[data-vivliostyle-page-container]')
+    .evaluateAll((containers: HTMLElement[]) =>
+      containers.map((c) => (c.textContent ?? '').replace(/\s+/g, ' ').trim()),
     );
 }
 
@@ -215,10 +224,55 @@ test('only the table marked landscape goes on a landscape page', async ({ page, 
   expect(printed.filter((size) => size === '297x210mm')).toHaveLength(1);
 });
 
+test('headings up to the chosen level start a new page, without blank pages', async ({ page }) => {
+  const paragraph = (text: string) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
+  await page.evaluate(
+    (content) => {
+      (window as TestWindow).__shitateEditor?.commands.setContent({ type: 'doc', content });
+    },
+    [
+      heading('第一章'),
+      paragraph('章の本文'),
+      heading('第一節', 2),
+      paragraph('節の本文'),
+      heading('第二章'),
+      paragraph('二章の本文'),
+    ],
+  );
+  const pagesWith = (texts: string[], text: string) =>
+    texts.flatMap((t, i) => (t.includes(text) ? [i] : []));
+
+  await openPreview(page);
+  const none = await previewPageTexts(page);
+  expect(pagesWith(none, '第一章')).toEqual(pagesWith(none, '第二章'));
+  await closePreview(page);
+
+  // One page more per break: a blank page would add another one.
+  await panel(page).getByLabel('見出しの前で改ページ').selectOption('1');
+  await openPreview(page);
+  const h1 = await previewPageTexts(page);
+  expect(h1).toHaveLength(none.length + 1);
+  expect(pagesWith(h1, '第一節')).toEqual(pagesWith(h1, '第一章'));
+  expect(pagesWith(h1, '第二章')[0]).toBe((pagesWith(h1, '第一章')[0] ?? 0) + 1);
+  await closePreview(page);
+
+  await panel(page).getByLabel('見出しの前で改ページ').selectOption('2');
+  await openPreview(page);
+  const h2 = await previewPageTexts(page);
+  expect(h2).toHaveLength(none.length + 2);
+  expect(pagesWith(h2, '第一節')[0]).toBe((pagesWith(h2, '第一章')[0] ?? 0) + 1);
+  await closePreview(page);
+
+  await panel(page).getByLabel('見出しの前で改ページ').selectOption('');
+  await openPreview(page);
+  expect(await previewPageTexts(page)).toHaveLength(none.length);
+});
+
 test('page settings and the landscape table survive export and reopening', async ({ page }) => {
   await panel(page).getByLabel('サイズ', { exact: true }).selectOption('B4');
   await panel(page).getByLabel('余白').selectOption('wide');
   await panel(page).getByLabel('基準文字サイズ').selectOption('9');
+  await panel(page).getByLabel('見出しの前で改ページ').selectOption('2');
   await editorBody(page).getByText('横', { exact: true }).click();
   await landscapeButton(page).click();
 
@@ -245,6 +299,7 @@ test('page settings and the landscape table survive export and reopening', async
   await expect(panel(page).getByLabel('サイズ', { exact: true })).toHaveValue('B4');
   await expect(panel(page).getByLabel('余白')).toHaveValue('wide');
   await expect(panel(page).getByLabel('基準文字サイズ')).toHaveValue('9');
+  await expect(panel(page).getByLabel('見出しの前で改ページ')).toHaveValue('2');
   await openPreview(page);
   expect(await previewPageSizes(page)).toContain('257x364mm');
 });
