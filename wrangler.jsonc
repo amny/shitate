@@ -1,0 +1,15 @@
+// Cloudflare Workers (static assets only). `pnpm run build` writes dist/, which is served as is.
+// Matches what Wrangler's autoconfig generated for production before this file existed.
+{
+  "name": "shitate",
+  "compatibility_date": "2026-10-12",
+  "observability": {
+    "enabled": true,
+  },
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application",
+  },
+  // Required by `wrangler preview` (the deploy command for non-production branches).
+  "previews": {},
+}
