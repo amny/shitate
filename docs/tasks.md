@@ -570,3 +570,12 @@
   - WindowsとMacで起動し、読込・エクスポート・自動保存が動く
   - 同じ文書から出力したPDFのページ割りが両OSで一致する
 - 依存：3-2
+- メモ：
+  - 実装済み（Mac で確認）。**Windows での起動・読込・エクスポート・自動保存と、両OSのPDFのページ割り一致は未確認**のため、チェックは付けていない。Windows 実機で `pnpm dist:win` のインストーラーを試して確認する。
+  - 設計は design.md §13 に追加した。Web版のビルド・デプロイ（`pnpm build` → `dist/`）は変えず、同じ `dist/` を Electron で `app://shitate/` から配信する。`FileAdapter` は `window.shitateDesktop` の有無で実行時に選ぶ。
+  - 追加した依存（devDependencies）：`electron`（デスクトップ版の実行環境）、`electron-builder`（dmg / nsis の作成）。pnpm のビルドスクリプト許可（`pnpm-workspace.yaml` の `allowBuilds`）で、Squirrel 用の `electron-winstaller` は不要なので許可していない。
+  - E2E（`tests/electron/app.spec.ts`、`pnpm test:e2e:electron`）で、`app://` からの読み込み、Node.js が見えないこと、メインプロセス経由の読込・エクスポート・自動保存（再起動後の復元）、フィルター外のファイルの拒否、PDFプレビューの組版を確認している。ダイアログはテスト内で差し替える。パッケージ版（`electron-builder --mac --dir`）が起動し、組版できることも一時的なテストで確認した。
+  - PDFの印刷は `window.print()` のまま。Electron では OS の印刷ダイアログが開く。**ダイアログからPDFに保存した結果（用紙サイズ・ページ割り）は未確認**（この環境では画面を確認できなかった）。CSS の `@page` の用紙サイズが反映されない場合は、`webContents.printToPDF` での保存を検討する。
+  - アイコンは未設定（Electron の既定のアイコン）。コード署名なしのため、Mac では初回起動時に Gatekeeper の警告が出る。
+  - `appId` は仮に `app.shitate.desktop` とした。
+  - 範囲外：`tests/e2e/page-settings.spec.ts:73` の lint エラー（`no-unnecessary-condition`）は着手前の main でも出ている。

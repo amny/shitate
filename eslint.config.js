@@ -8,7 +8,7 @@ import tseslint from 'typescript-eslint';
 
 // Use src/adapters/index.ts instead of concrete adapter implementations
 const adaptersPattern = {
-  group: ['**/adapters/web', '**/adapters/web/*'],
+  group: ['**/adapters/web', '**/adapters/web/*', '**/adapters/electron', '**/adapters/electron/*'],
   message: 'Import adapters via src/adapters/index.ts.',
 };
 const reactPattern = {
@@ -17,7 +17,15 @@ const reactPattern = {
 };
 
 export default defineConfig([
-  globalIgnores(['dist', 'coverage', 'test-results', 'playwright-report', 'spikes']),
+  globalIgnores([
+    'dist',
+    'dist-electron',
+    'release',
+    'coverage',
+    'test-results',
+    'playwright-report',
+    'spikes',
+  ]),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -51,6 +59,11 @@ export default defineConfig([
       // src/core must stay framework-free (CLAUDE.md: architecture rules)
       'no-restricted-imports': ['error', { patterns: [adaptersPattern, reactPattern] }],
     },
+  },
+  {
+    // Electron main process, preload and build scripts run in Node.js (design.md §13)
+    files: ['electron/**/*.ts', 'scripts/**/*.ts'],
+    languageOptions: { globals: globals.node },
   },
   prettier,
 ]);

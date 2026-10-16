@@ -3,16 +3,23 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "dist-electron/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "dev:electron": "node scripts/dev-electron.ts",
+    "build:electron": "pnpm build && node scripts/build-electron.ts",
+    "start:electron": "electron .",
+    "dist:mac": "pnpm build:electron && electron-builder --mac",
+    "dist:win": "pnpm build:electron && electron-builder --win",
     "typecheck": "tsc -b --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:electron": "pnpm build:electron && playwright test -c playwright.electron.config.ts"
   },
   "dependencies": {
     "@codemirror/lang-css": "^6.3.1",
@@ -47,6 +54,8 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
+    "electron": "^44.7.2",
+    "electron-builder": "^26.15.3",
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",

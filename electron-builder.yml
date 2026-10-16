@@ -1,0 +1,21 @@
+# Desktop packages (design.md §13.1). Run `pnpm dist:mac` / `pnpm dist:win`.
+appId: app.shitate.desktop
+productName: Shitate
+directories:
+  output: release
+# The renderer and the main process are bundled, so no node_modules are shipped.
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - package.json
+  - '!**/node_modules/**/*'
+  - '!**/*.map'
+asar: true
+mac:
+  target: dmg
+  category: public.app-category.productivity
+win:
+  target: nsis
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
