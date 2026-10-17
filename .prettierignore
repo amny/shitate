@@ -6,3 +6,5 @@ pnpm-lock.yaml
 docs
 fixtures
 spikes
+dist-electron
+release

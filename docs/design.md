@@ -40,6 +40,7 @@
 | PDF用フォント | `@fontsource/noto-sans-jp` | PDFプレビュー時のみ読み込む |
 | テスト | Vitest、Testing Library、Playwright | |
 | パッケージ管理 | pnpm | |
+| デスクトップ版 | Electron、electron-builder | §13。Web版と同じレンダラーのビルドを使う |
 
 ---
 
@@ -82,7 +83,10 @@ src/
   adapters/
     types.ts              # FileAdapter / StorageAdapter
     web/
+    electron/             # ElectronFileAdapter と preload が公開するブリッジの型（§13）
   themes/                 # ビルトインテーマCSS（*.css）
+electron/                 # Electronのメインプロセスとpreload（§13。Web版のビルドには含めない）
+scripts/                  # Electronのビルド・開発起動スクリプト
 fixtures/                 # テスト・スパイク用サンプル文書
 spikes/                   # 技術検証用（本番コードからimportしない）
 tests/
@@ -438,6 +442,8 @@ type StoreName = "drafts" | "draftMeta" | "themes" | "settings";
 
 - `get<T>` / `list<T>` の `T` は呼び出し側の想定にすぎず、保存値は検証されない。読み出した値は呼び出し側でzodスキーマ等により検証する。
 - Web版：`openFile` / `openImage` は `<input type="file">`（`openImage` は FileReader でData URI化）、`saveFile` はBlob＋ダウンロードリンク。`StorageAdapter` はidbでIndexedDBに保存する。
+- Electron版：`FileAdapter` は preload が公開する `window.shitateDesktop` を経由して、メインプロセスのダイアログとファイルAPIで実装する（§13）。`StorageAdapter` はWeb版と同じIndexedDB。
+- `src/adapters/index.ts` は実行時に `window.shitateDesktop` の有無で実装を選ぶ。Web版とElectron版でレンダラーのビルドは1つ。
 - アプリコードはアダプターの具象クラスを直接importせず、`src/adapters/index.ts` の取得関数経由で使う。
 - localStorageは使わない（画像入りの文書で容量を超えるため）。
 
@@ -516,6 +522,7 @@ type StoreName = "drafts" | "draftMeta" | "themes" | "settings";
 | stableId | 単体 | 重複IDの振り直し、既存IDの維持 |
 | 表操作 | E2E | セル結合・分割、セル内への箇条書き・画像の挿入、エクスポート後の `colspan`/`rowspan` |
 | 自動保存 | E2E | 再読込後に復元できる |
+| Electron | 単体・E2E | `accept` からダイアログのフィルターへの変換、画像の種類判定、`app://` のパス解決（単体）。Electron版の起動と、ブリッジ経由でアダプターが選ばれること（E2E、Playwrightの `_electron`） |
 
 `fixtures/` には最低限次を用意する：`basic.md`、`complex-table.html`（結合セル・セル内リスト・入れ子表・セル内画像）、`spec-full.json`（採番5階層・図表・相互参照を含む）。
 
@@ -528,3 +535,45 @@ type StoreName = "drafts" | "draftMeta" | "themes" | "settings";
 | ~~PDF組版ライブラリ~~ → Vivliostyle に決定 | S-1（済） |
 | 見出しレベル飛び時の採番ルールの最終形 | 2-1（テストで固定） |
 | Excel・Wordからの表貼り付けの対応範囲 | 未定（Phase 1では標準のparseHTMLに任せる） |
+
+---
+
+## 13. デスクトップ版（Electron）
+
+Web版（静的ホスティングにデプロイ）を維持したまま、同じレンダラーのビルドをElectronで包む。
+
+### 13.1 構成
+
+| ファイル | 役割 |
+| --- | --- |
+| `electron/main.ts` | ウィンドウ作成、`app://` プロトコル、IPCハンドラー、遷移・新規ウィンドウの制限 |
+| `electron/preload.ts` | `contextBridge` で `window.shitateDesktop`（`DesktopBridge`）を公開する |
+| `electron/fileTypes.ts` | `accept`（拡張子・MIME）からダイアログのフィルターへの変換、画像のMIME判定（純粋関数） |
+| `electron/protocol.ts` | `app://` のURLから `dist/` 内のファイルパスへの解決（ディレクトリ外は拒否） |
+| `src/adapters/electron/` | `DesktopBridge` の型と取得関数、`ElectronFileAdapter` |
+
+- ビルド：レンダラーは `vite build`（Web版と同じ `dist/`）。main・preload は `scripts/build-electron.mjs` で `dist-electron/`（CommonJS）に別々にビルドする（sandboxのpreloadは1ファイルでなければならないため、mainと共有チャンクを作らない）。
+- `pnpm dev` / `pnpm build` / `pnpm preview` はWeb版のまま変えない。Electron用に `dev:electron`（Viteの開発サーバーに接続）、`build:electron`、`dist:mac`、`dist:win`（electron-builder、出力は `release/`、署名なし）を追加する。
+- パッケージには `dist/` と `dist-electron/` だけを入れる（依存はレンダラー・mainにバンドル済み）。
+
+### 13.2 読み込みとセキュリティ
+
+- 本番は独自プロトコル `app://shitate/` で `dist/` を配信する（`protocol.handle`、`standard` / `secure` として登録）。`file://` を使わないのは、絶対パス（`/pdf-preview.html`）がそのまま使え、IndexedDBのオリジンが固定されるため。開発時（`dev:electron`）はViteの開発サーバーのURLを読む。
+- `contextIsolation: true`、`sandbox: true`、`nodeIntegration: false`。レンダラーはNode.jsのAPIを直接使わない。
+- アプリのオリジン外への遷移は止め、http(s) のリンクは既定のブラウザで開く。新規ウィンドウは開かない。権限要求（カメラ等）はすべて拒否する。
+- IPCハンドラーは、送信元のフレームがアプリのオリジンであることと、引数の型を検証する。
+
+### 13.3 ファイル入出力（IPC）
+
+| チャンネル | 内容 |
+| --- | --- |
+| `shitate:open-file` | 開くダイアログ（`accept` から作ったフィルター）でテキストファイルを選び、UTF-8で読んで `{ name, text }` を返す。キャンセルは `null` |
+| `shitate:open-image` | 画像を選び、拡張子から判定したMIMEが `accept` に含まれることを確かめてData URIで返す |
+| `shitate:save-file` | 保存ダイアログ（既定のファイル名は `suggestedName` のファイル名部分、場所は書類フォルダ）で選んだ場所にUTF-8で書く。キャンセルは何もしない（Web版のダウンロードと同じく結果を返さない） |
+
+- 読み書きの失敗はファイル名を含むエラーとしてレンダラーに返し、既存の呼び出し側の警告表示に任せる。
+
+### 13.4 PDF
+
+- PDFプレビューと印刷はWeb版と同じ（`iframe` の `window.print()`）。ElectronではOSの印刷ダイアログが開くので、そこからPDFに保存する（Mac：「PDFとして保存」、Windows：「Microsoft Print to PDF」）。
+

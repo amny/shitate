@@ -21,7 +21,7 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
-    include: ['src/**/*.test.{ts,tsx}'],
+    include: ['src/**/*.test.{ts,tsx}', 'electron/**/*.test.ts'],
     // Theme CSS is imported with ?raw and must keep its content in tests
     // (Vitest empties CSS files by default).
     css: { include: [/\/src\/themes\/.+\.css/] },

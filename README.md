@@ -39,9 +39,22 @@ pnpm dev
 | `pnpm test`      | 単体テスト（Vitest）              |
 | `pnpm test:e2e`  | E2Eテスト（Playwright）           |
 
+### デスクトップ版（Electron）
+
+Web版と同じビルド（`dist/`）をElectronで包みます。上記のWeb版のコマンドとデプロイは変わりません。
+
+| コマンド                 | 内容                                                               |
+| ------------------------ | ------------------------------------------------------------------ |
+| `pnpm dev:electron`      | Viteの開発サーバーをElectronで開く                                 |
+| `pnpm build:electron`    | Web版のビルド＋メインプロセス・preloadのビルド（`dist-electron/`） |
+| `pnpm start:electron`    | ビルド済みのアプリを起動                                           |
+| `pnpm dist:mac`          | Mac用インストーラー（dmg）を `release/` に作成（署名なし）         |
+| `pnpm dist:win`          | Windows用インストーラー（nsis）を `release/` に作成（署名なし）    |
+| `pnpm test:e2e:electron` | ElectronのE2Eテスト（ビルドしてから実行）                          |
+
 ## 技術スタック
 
-Vite / React / TypeScript（strict）/ TipTap v3 / Zustand / markdown-it / DOMPurify / zod / idb / Vivliostyle / Vitest / Playwright
+Vite / React / TypeScript（strict）/ TipTap v3 / Zustand / markdown-it / DOMPurify / zod / idb / Vivliostyle / Electron / Vitest / Playwright
 
 ## ディレクトリ構成
 
@@ -53,6 +66,8 @@ src/
   adapters/   ファイル入出力と保存の抽象化（Electron化の際に実装を差し替え）
   pdf/        PDF組版用ページ（pdf-preview.html から読み込み、iframe で表示）
   themes/     ビルトインテーマCSS とテーマ契約（README.md）
+electron/     Electron のメインプロセスと preload
+scripts/      Electron のビルド・開発起動スクリプト
 fixtures/     テスト用サンプル文書
 spikes/       技術検証用コード（本番コードからは参照しない）
 tests/e2e/    Playwright テスト

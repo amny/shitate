@@ -1,0 +1,5 @@
+# Required by pnpm 10 (Cloudflare Workers Builds) whenever this file exists.
+packages:
+  - .
+allowBuilds:
+  electron-winstaller: false
