@@ -460,6 +460,109 @@ body {
   box-shadow: 0 1px 2px rgba(29, 33, 41, 0.08);
 }
 
+/* Outline panel (design.md §5.8) */
+.outline-panel {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 12px;
+  width: 260px;
+  padding: 16px 12px;
+  overflow-y: auto;
+  background: var(--app-surface);
+  border-right: 1px solid var(--app-border);
+}
+
+.outline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 13px;
+}
+
+.outline-item {
+  display: flex;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  color: var(--app-text);
+  line-height: 1.5;
+  text-decoration: none;
+}
+
+.outline-item:hover {
+  background: var(--app-hover);
+}
+
+.outline-item:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: -2px;
+}
+
+.outline-item.is-front {
+  color: var(--app-text-muted);
+}
+
+.outline-item.outline-level-1 {
+  font-weight: 700;
+}
+
+.outline-item.outline-level-2 {
+  padding-left: 24px;
+}
+
+.outline-item.outline-level-3 {
+  padding-left: 40px;
+}
+
+.outline-item.outline-level-4 {
+  padding-left: 56px;
+}
+
+.outline-item.outline-level-5,
+.outline-item.outline-level-6 {
+  padding-left: 72px;
+}
+
+.outline-item[aria-current='location'] {
+  background: var(--app-accent-soft);
+  color: var(--app-accent-text);
+}
+
+.outline-number {
+  flex-shrink: 0;
+  min-width: 24px;
+  color: var(--app-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.outline-item[aria-current='location'] .outline-number {
+  color: inherit;
+}
+
+.outline-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.outline-text.is-empty {
+  color: var(--app-text-muted);
+}
+
+.outline-divider {
+  height: 1px;
+  margin: 6px 0;
+  background: var(--app-border);
+}
+
+.outline-empty {
+  margin: 0;
+  padding: 6px 8px;
+  color: var(--app-text-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 /* Document settings panel */
 .settings-panel {
   display: flex;

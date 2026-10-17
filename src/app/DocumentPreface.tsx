@@ -12,14 +12,17 @@ interface PreviewBlockProps {
   html: string;
   title: string;
   onClick: () => void;
+  /** Scroll target of the outline panel (design.md §5.8). */
+  preface?: 'cover' | 'revisions';
 }
 
 /** Escaped markup shared with the export (core/export/templates.ts); '' renders nothing. */
-function PreviewBlock({ html, title, onClick }: PreviewBlockProps) {
+function PreviewBlock({ html, title, onClick, preface }: PreviewBlockProps) {
   if (html === '') return null;
   return (
     <div
       className="doc-preface"
+      data-preface={preface}
       title={title}
       dangerouslySetInnerHTML={{ __html: html }}
       onClick={onClick}
@@ -48,6 +51,7 @@ export function DocumentPreface({ onEdit }: PreviewProps) {
       <PreviewBlock
         html={renderCover(meta)}
         title="クリックして表紙を編集"
+        preface="cover"
         onClick={() => {
           onEdit('cover');
         }}
@@ -55,6 +59,7 @@ export function DocumentPreface({ onEdit }: PreviewProps) {
       <PreviewBlock
         html={renderRevisions(revisions)}
         title="クリックして改訂履歴を編集"
+        preface="revisions"
         onClick={() => {
           onEdit('revisions');
         }}
