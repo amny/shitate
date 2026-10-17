@@ -69,11 +69,13 @@ src/
       toc.ts
       codeBlock.ts        # シンタックスハイライトと言語選択（§5.7）
     nodeviews/            # CrossRef、Toc、Figure等のReact NodeView
+    scrollToNode.ts       # ノードへのスクロールとカーソル移動（目次・アウトラインで共用。§5.8）
     ui/                   # 表操作メニュー、参照挿入ダイアログ等
     editor-ui.css         # 編集UI用CSS（テーマとは別）
   core/                   # 純粋TS（Reactに依存しない）
     model/                # 型定義とzodスキーマ
     labels/               # computeLabels
+    outline/              # アウトラインパネルの項目（§5.8）
     highlight/            # コードブロックの対応言語と字句分割（§5.7）
     import/               # markdown / html / json / 自己形式HTML の読込
     export/               # エクスポートHTMLの組み立て
@@ -238,7 +240,7 @@ export function formatRef(labels: Labels, targetId: string): string | null;
 - 見出し番号：見出し先頭に widget デコレーションで `<span class="heading-number">2.1</span>` を表示（本文テキストには含めない）。
 - 図・表番号：見出しと同じく widget デコレーションで、キャプションの先頭に `<span class="caption-number">図1</span>` / `表1` を表示する（2-3で NodeView から変更。仕組みを見出しと共通にし、番号が本文に入らないことを保証しやすくするため）。空のキャプションにはプレースホルダーを表示する。
 - crossRef：ノードデコレーションで `data-label`（`formatRef` の結果）を付け、編集UIのCSS（`::before { content: attr(data-label) }`）で表示する。`null` のときは `data-label="参照先なし"` とクラス `is-broken` を付けて警告スタイルで表示する（2-4で NodeView から変更。参照ノード自体は変わらないため NodeView は番号の変化で再描画されないが、デコレーションの変化は反映されるため）。
-- toc：NodeViewで `labels.toc` を `tocDepth` までの深さで一覧表示する。中身はエクスポートと同じ `renderTocContent`（`core/export/toc.ts`）で作る。`tocDepth` はアプリの状態（文書の上書き ＞ テーマの設定値）から `setTocDepth` コマンドでエディターに渡し、プラグインのstateに持つ。目次の内容（項目と深さ）をノードデコレーションのspecに載せ、内容が変わったときだけ再描画する。項目のクリックで、その見出しへスクロールする。
+- toc：NodeViewで `labels.toc` を `tocDepth` までの深さで一覧表示する。中身はエクスポートと同じ `renderTocContent`（`core/export/toc.ts`）で作る。`tocDepth` はアプリの状態（文書の上書き ＞ テーマの設定値）から `setTocDepth` コマンドでエディターに渡し、プラグインのstateに持つ。目次の内容（項目と深さ）をノードデコレーションのspecに載せ、内容が変わったときだけ再描画する。項目のクリックで、その見出しへスクロールする（`scrollToNode`。§5.8と共用）。
 - 目次に載せる深さは、文書設定パネルの「目次に載せる深さ」で変え、文書ごとの上書き（`settingsOverride.tocDepth`）に保存する。テーマの設定値は変えない（テーマの編集は3-1）。
 
 ### 5.6 相互参照の挿入UI
@@ -256,6 +258,16 @@ export function formatRef(labels: Labels, targetId: string): string | null;
 - 字句分割は `core/highlight` の lowlight に一元化する。エディターは CodeBlockLowlight に、別名の解決と自動判定の無効化をした lowlight を渡す。エクスポートは `highlightTokens` で同じ字句に分割する。入れ子の要素はクラスを連結した平坦な `<span class="hljs-…">` にする（エディターのデコレーションと同じ形）。
 - 言語の選択：コードブロックのNodeView（`<pre class="code-block-view">`）の右上に `<select>` を置く。先頭は「テキスト」（`language: null`）。別名はその言語を選択状態で表示し、未対応の値は「xxx（ハイライトなし）」の項目を追加して表示する。編集UIなのでエクスポートには出ない。
 - テーマは `hljs-` で始まるクラスで色を指定する（§8.2）。
+
+### 5.8 アウトラインパネル（3-5）
+
+- 編集画面の左に幅260pxのパネル（`nav.outline-panel`、`aria-label="アウトライン"`）を置く。上部に「アウトライン / 図表」のタブ（矢印キーで移動）。編集UIなので、見た目は `app.css` に置き、エクスポートには出ない。
+- 項目は `buildOutline`（`core/outline`）で作る。入力は `computeLabels` の結果と、表紙・改訂履歴・目次の有無。番号はパネルで計算しない。
+- アウトライン：表紙（`hasCover`）・改訂履歴（1件以上）・目次（目次ノードあり）のうち存在するもの → 区切り → すべての見出し（目次の深さの設定に依らない。採番しない見出しは番号なし）。見出しはレベルに応じて字下げし、H1は太字。見出しが無いときは案内文を表示する。
+- 図表：図（「図1 キャプション」）→ 表（「表1 キャプション」）の順。キャプションが空なら「（キャプションなし）」。
+- 現在位置：選択の先頭より前にある最後の見出しを強調する（`aria-current="location"`）。
+- クリック：見出し・図・表・目次は `scrollToNode`（`editor/scrollToNode.ts`）でスクロールし、カーソルを移す（見出し・キャプションはその先頭のテキストブロックの先頭、目次はノード選択）。表紙・改訂履歴は本文の外なので、`[data-preface="cover"]` / `[data-preface="revisions"]` のプレビューへスクロールするだけにする。
+- エディターの状態は `useEditorState` で購読し、ラベルか選択が変わったときだけ再描画する。
 
 ---
 

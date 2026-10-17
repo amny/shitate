@@ -10,6 +10,7 @@ import { RestoreDraftBanner } from './autosave/RestoreDraftBanner';
 import { SavedDocumentsDialog } from './autosave/SavedDocumentsDialog';
 import { useAutosave } from './autosave/useAutosave';
 import { BrandLogo } from './layout/BrandLogo';
+import { OutlinePanel } from './layout/OutlinePanel';
 import { Toolbar } from './layout/Toolbar';
 import { DocumentFooterPreview, DocumentPreface } from './DocumentPreface';
 import { DocumentSettingsPanel } from './panels/DocumentSettingsPanel';
@@ -214,6 +215,7 @@ export function App() {
         </div>
       )}
       <div className="app-body">
+        <OutlinePanel editor={editor} />
         <main className="app-main" ref={mainRef}>
           <ThemeStyle />
           <div className="doc editor-paper">

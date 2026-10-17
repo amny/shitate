@@ -1,12 +1,12 @@
 import { Node } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
-import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorState } from '@tiptap/pm/state';
-import type { EditorView } from '@tiptap/pm/view';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { renderTocContent, TOC_TITLE, tocEntriesUpTo } from '../../core/export';
 import type { TocDepth } from '../../core/export';
 import { tocDepthSchema } from '../../core/model';
+import { scrollToNode } from '../scrollToNode';
 import { getLabels } from './labels';
 
 declare module '@tiptap/core' {
@@ -47,31 +47,6 @@ function tocContent(state: EditorState): { html: string; empty: boolean; key: st
     empty: entries.length === 0,
     key: JSON.stringify(entries),
   };
-}
-
-function findHeadingPos(doc: PMNode, id: string): number | null {
-  const found: number[] = [];
-  doc.descendants((node, pos) => {
-    if (found.length > 0) return false;
-    if (node.type.name === 'heading' && node.attrs['id'] === id) {
-      found.push(pos);
-      return false;
-    }
-    return true;
-  });
-  return found[0] ?? null;
-}
-
-function scrollToHeading(view: EditorView, id: string): void {
-  const pos = findHeadingPos(view.state.doc, id);
-  if (pos === null) return;
-  const dom = view.nodeDOM(pos);
-  if (dom instanceof HTMLElement) {
-    dom.scrollIntoView({ block: 'start' });
-  }
-  const { tr } = view.state;
-  view.dispatch(tr.setSelection(TextSelection.create(tr.doc, pos + 1)));
-  view.focus();
 }
 
 /**
@@ -181,7 +156,7 @@ export const Toc = Node.create({
         const item = event.target instanceof Element ? event.target.closest('a.toc-item') : null;
         if (!item) return;
         event.preventDefault();
-        scrollToHeading(view, item.getAttribute('href')?.slice(1) ?? '');
+        scrollToNode(view, item.getAttribute('href')?.slice(1) ?? '');
       });
 
       return {
