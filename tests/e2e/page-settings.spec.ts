@@ -70,7 +70,7 @@ async function previewPageTexts(page: Page): Promise<string[]> {
   return frame(page)
     .locator('[data-vivliostyle-page-container]')
     .evaluateAll((containers: HTMLElement[]) =>
-      containers.map((c) => (c.textContent ?? '').replace(/\s+/g, ' ').trim()),
+      containers.map((c) => c.textContent.replace(/\s+/g, ' ').trim()),
     );
 }
 
