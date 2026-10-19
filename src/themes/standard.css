@@ -251,6 +251,12 @@
   text-align: center;
 }
 
+/* Mermaid diagrams (inline SVG at its natural size, shrunk to the width; design.md §5.9) */
+.doc .doc-body .mermaid-diagram {
+  margin: 1.4em 0;
+  text-align: center;
+}
+
 .doc .doc-body figcaption,
 .doc .table-caption {
   font-size: 0.9em;

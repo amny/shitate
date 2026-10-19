@@ -1,5 +1,6 @@
 import basicMd from '../../fixtures/basic.md?raw';
 import complexTableHtml from '../../fixtures/complex-table.html?raw';
+import diagramsMd from '../../fixtures/diagrams.md?raw';
 import specFullJson from '../../fixtures/spec-full.json?raw';
 import { docRootSchema } from '../core/model';
 import type { DocNode } from '../core/model';
@@ -121,5 +122,13 @@ describe('fixtures/spec-full.json: table of contents', () => {
   it('starts with the table of contents', () => {
     expect(doc.content?.[0]?.type).toBe('toc');
     expect(collectNodes(doc.content).filter((n) => n.type === 'toc')).toHaveLength(1);
+  });
+});
+
+describe('fixtures/diagrams.md', () => {
+  it('contains Mermaid diagrams, one with a syntax error, and another code block', () => {
+    expect(diagramsMd.match(/^```mermaid$/gm)).toHaveLength(3);
+    expect(diagramsMd).toMatch(/^```mermaid\nflowchart TD\n {2}A -->\n```$/m);
+    expect(diagramsMd).toMatch(/^```sql$/m);
   });
 });

@@ -15,7 +15,8 @@ export default defineConfig({
   },
   optimizeDeps: {
     // Discovered late otherwise, which re-bundles deps and loads React twice in dev.
-    include: ['@tiptap/react/menus'],
+    // mermaid is imported dynamically (design.md §5.9), so it would also reload the page.
+    include: ['@tiptap/react/menus', 'mermaid'],
   },
   test: {
     globals: true,

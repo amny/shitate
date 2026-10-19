@@ -2,6 +2,7 @@ import type { Editor } from '@tiptap/react';
 import { buildExportHtml, toExportFileName } from '../../core/export';
 import { buildPageCss, PDF_BASE_CSS, resolvePageSettings } from '../../core/pdf';
 import { createExtensions } from '../../editor/createEditor';
+import { prepareDiagrams } from '../../editor/mermaid';
 import type { Theme } from '../../core/model';
 import type { PdfRenderRequest } from '../../pdf/api';
 import { collectDocumentState } from '../documentState';
@@ -22,15 +23,21 @@ export function pdfTitle(): string {
 
 /**
  * The exported HTML plus the PDF style sheets (design.md §10). `theme` defaults to the
- * document's theme; the theme editor passes the theme being edited.
+ * document's theme; the theme editor passes the theme being edited. Asynchronous because the
+ * Mermaid diagrams are rendered first (§7); a diagram that cannot be rendered stays code.
  */
-export function buildPdfRequest(
+export async function buildPdfRequest(
   editor: Editor,
   theme: Theme = useDocumentStore.getState().theme,
-): PdfRenderRequest {
+): Promise<PdfRenderRequest> {
   const state = collectDocumentState(editor);
+  const { diagrams } = await prepareDiagrams(state.doc);
   const request: PdfRenderRequest = {
-    html: buildExportHtml(state, theme, { extensions: createExtensions(), imageViewer: false }),
+    html: buildExportHtml(state, theme, {
+      extensions: createExtensions(),
+      imageViewer: false,
+      diagrams,
+    }),
     styleSheets: [
       PDF_BASE_CSS,
       buildPageCss(resolvePageSettings(theme.settings, state.settingsOverride)),

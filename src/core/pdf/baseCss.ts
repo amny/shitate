@@ -53,10 +53,11 @@ export const PDF_BASE_CSS = `
 }
 
 /*
- * Figures and table rows are not split. A whole table is not kept together: a table longer
- * than a page would leave the previous page empty (S-1).
+ * Figures, Mermaid diagrams (S-2) and table rows are not split. A whole table is not kept
+ * together: a table longer than a page would leave the previous page empty (S-1).
  */
 .doc .doc-body figure,
+.doc .doc-body .mermaid-diagram,
 .doc .doc-body tr {
   break-inside: avoid;
 }

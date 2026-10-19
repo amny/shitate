@@ -27,6 +27,11 @@ const CLASS_GROUPS: readonly { title: string; classes: string; note: string }[] 
     note: 'h1〜h6、p、table などの要素セレクタも .doc の下で使えます',
   },
   {
+    title: 'Mermaid図',
+    classes: '.mermaid-diagram',
+    note: '図（SVG）を包む要素です。余白や配置に使います。中のSVGはMermaidが描きます',
+  },
+  {
     title: 'コードのハイライト',
     classes: '.hljs-keyword, .hljs-string, .hljs-comment, .hljs-title など（hljs- で始まるクラス）',
     note: 'コードブロックの言語に応じて付きます。クラス名は highlight.js と同じです',

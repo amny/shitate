@@ -38,6 +38,8 @@ export const THEME_CONTRACT_CLASSES: readonly string[] = [
   'table-caption',
   'caption-number',
   'xref',
+  // Mermaid diagram (design.md §5.9; the SVG inside is drawn by Mermaid and not in the contract)
+  'mermaid-diagram',
 ];
 
 /**

@@ -1,5 +1,6 @@
 import { documentText, prepareHtmlForPdf } from './prepareHtml';
 import { fixPrintPageSizes } from './printSizes';
+import { fixSvgRefs } from './svgRefs';
 
 describe('prepareHtmlForPdf', () => {
   it('adds a space after heading numbers in the body only', () => {
@@ -51,5 +52,27 @@ describe('fixPrintPageSizes', () => {
     // Running it again replaces the rules instead of adding more.
     fixPrintPageSizes(document, viewport);
     expect(document.querySelectorAll('#print-page-sizes')).toHaveLength(1);
+  });
+});
+
+describe('fixSvgRefs', () => {
+  it('points the references Vivliostyle rewrote back at the original ids', () => {
+    const viewport = document.createElement('div');
+    viewport.innerHTML =
+      '<div data-vivliostyle-page-container="true"><svg><defs><marker id="mermaid-1_arrow"></marker></defs>' +
+      '<path marker-end="url(&quot;#viv-id-blob:http://localhost/a-b:0023mermaid-1_arrow&quot;)"></path>' +
+      '<path marker-start="url(#viv-id-blob:x:0023mermaid-1_start)" fill="url(#local)"></path></svg></div>' +
+      '<svg><path marker-end="url(#viv-id-x:0023outside)"></path></svg>';
+
+    expect(fixSvgRefs(viewport)).toBe(2);
+    const paths = viewport.querySelectorAll('path');
+    expect(paths[0]?.getAttribute('marker-end')).toBe('url(#mermaid-1_arrow)');
+    expect(paths[1]?.getAttribute('marker-start')).toBe('url(#mermaid-1_start)');
+    expect(paths[1]?.getAttribute('fill')).toBe('url(#local)');
+    // Only the laid out pages are touched.
+    expect(paths[2]?.getAttribute('marker-end')).toBe('url(#viv-id-x:0023outside)');
+
+    // Running it again (after another layout) finds nothing left to fix.
+    expect(fixSvgRefs(viewport)).toBe(0);
   });
 });
