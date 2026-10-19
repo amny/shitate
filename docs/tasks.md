@@ -251,6 +251,15 @@
   - 確認は Playwright の `page.pdf()` による。実際の印刷ダイアログでの「PDFに保存」は、2-8の受け入れ確認で Chrome / Edge の実機で行う。
   - スパイク専用の依存は `spikes/pdf/package.json` に分けた（アプリの依存には入れていない）。pnpm 11 が依存のpostinstall（`core-js`・`es5-ext`。どちらもメッセージを出すだけ）で止まるため、`spikes/pdf/pnpm-workspace.yaml` の `allowBuilds` で実行しない設定にした。`.claude/launch.json` に `spike-pdf`（ポート5180）を追加し、`.prettierignore` に `spikes` を追加した。
 
+### [x] S-2 Mermaid図のSVG出力とPDF組版の検証
+- 内容：Mermaid図を、エクスポートHTMLに埋め込めるSVGとして描画でき、Vivliostyleで組版できるかを確かめる（2-14の前提）。
+- 受け入れ基準：主な図の種類（フローチャート、シーケンス図、クラス図、状態遷移図、ER図、ガントチャート、円グラフ、マインドマップ）について、SVGの要素・外部参照・サイズとPDFの見た目を確認し、結果を `docs/spike-mermaid.md` に記録する
+- 依存：S-1
+- メモ：
+  - ユーザーの依頼で追加したスパイク。結論と回避策は `docs/spike-mermaid.md` に書いた。design.md は §2・§3・§5.1・§5.9（新設）・§6・§7・§8.2・§10・§11 を更新した。
+  - 検証コードは `spikes/mermaid/` に置いた（本番コードからは参照しない）。スパイク専用の依存（`mermaid` 12.1.0、`dompurify`、`@vivliostyle/core`、`vite`）は `spikes/mermaid/package.json` に分け、アプリの依存には入れていない。`pnpm-workspace.yaml` と `.gitignore` は `spikes/pdf/` と同じ内容にした。
+  - Vivliostyleで矢印が消える問題（SVG内の `url(#id)` 参照が書き換えられる）が見つかった。組版後に参照を元に戻す回避策で解決することを確認した。
+
 ---
 
 ## Phase 2：仕様書化
@@ -491,6 +500,22 @@
   - エクスポートでは、`generateHTML` の結果のうち `<pre><code class="language-x">` の中身を文字参照を戻してから字句分割し、エスケープし直して出力する（`core/export/highlightCode.ts`）。入れ子の要素はクラスを連結した平坦な `<span>` にしており、エディターのデコレーションと同じ形になる。
   - 言語の選択欄は、コードの1行目に重ならないよう、ホバー時とキーボードでフォーカスしたときだけ表示する。
   - 単体テストは `core/highlight/highlight.test.ts`・`core/export/highlightCode.test.ts`・`export.test.ts` の「code highlighting」・`theme.test.ts`。E2Eは `tests/e2e/code-highlight.spec.ts`。
+
+### [ ] 2-14 Mermaid図の表示
+- 内容：§5.9。`language: "mermaid"` のコードブロックを、エディターでは図のプレビュー付きで表示し、エクスポートHTML（PDFを含む）ではSVGの図として出力する。文書に保存するのはソースだけ。
+- 受け入れ基準：
+  - コードブロックの言語に「Mermaid（図）」を選べ、コードの下に図が表示される。編集に追従し（0.4秒後）、構文エラーではエラーが表示され、直前の図は残る
+  - 「コードを隠す」でコードを隠せ、図のクリックで再表示できる。切り替えは文書に保存されない
+  - Markdownの ` ```mermaid `、外部HTMLの `pre.mermaid` / `div.mermaid` が Mermaid図として読み込める
+  - エクスポートHTMLで図が `div.mermaid-diagram` のインラインSVG（`foreignObject`・外部参照なし、文書内でIDが一意）として出力され、編集UIは出力されない。描画できない図はコードブロックのまま出力され、件数が警告される
+  - PDFプレビューで図が矢印を含めて表示され、図の途中で改ページしない
+  - 埋め込みデータと往復は変わらない（`fixtures/diagrams.md` を往復テストに追加）。`EmbeddedData.version` は変えない
+  - Mermaid は図を含む文書を表示したときだけ読み込まれる（通常の編集画面のチャンクが大きく増えない）
+- 依存：2-13、S-2
+- メモ：
+  - ユーザーの依頼で追加したタスク。設計は「図番号なし・codeBlockで持つ」案で承認済み。
+  - S-2（`docs/spike-mermaid.md`、`spikes/mermaid/`）で方式を検証した。`mermaid` 12.1.0（MIT）を `htmlLabels: false` で使う。Vivliostyle が SVG 内の `url(#id)` 参照を壊すため、PDFの組版後に参照を戻す（§10）。
+  - 範囲外：図番号・キャプション・相互参照（専用ノードが必要）、図のクリックでの拡大表示（§7.3）、テーマに連動した図の配色。
 
 **Phase 2 完了条件：ページ番号付きの目次を持つ仕様書PDFを、任意のページサイズで出力できる。**
 
