@@ -163,10 +163,12 @@ export interface EmbeddedData {
   version: 1;
   state: DocumentState;
   theme: Theme;                // 使用テーマを丸ごと同梱（手元にないテーマでも復元できる）
+  displayHash?: string;        // 表示部分（div.doc）の指紋。外部エディターでの改変の検出用（§6.1。2-15）
 }
 ```
 
 - 形式変更に備え、`version` で分岐するマイグレーション関数 `migrate(data)` を `core/import` に置く。
+- `displayHash` は任意の項目のため、項目の無い既存データはそのまま読み込め、`EmbeddedData.version` は上げない（zod の `z.object` は未知のキーを捨てるため、追加前のアプリでも読める）。エクスポートHTMLにだけ入れ、下書き（§9.2）には入れない。
 
 ---
 
@@ -300,7 +302,7 @@ S-2（`docs/spike-mermaid.md`）で検証した方式。
 
 | 入力 | 判定 | 処理 |
 |---|---|---|
-| 自己形式HTML | `<script type="application/json" id="doc-data">` がある | JSONを取り出し → zod検証 → `migrate` → `DocumentState` と `Theme` を復元 |
+| 自己形式HTML | `<script type="application/json" id="doc-data">` がある | JSONを取り出し → zod検証 → `migrate` → 表示部分の指紋を照合（§6.1） → `DocumentState` と `Theme` を復元 |
 | 外部HTML | 拡張子 `.html` で上記なし | DOMPurifyでサニタイズ → `generateJSON(html, extensions)` |
 | Markdown | 拡張子 `.md` | markdown-it（GFM表）でHTML化 → 外部HTMLと同じ経路 |
 | TipTap JSON | 拡張子 `.json` | zod検証（`type: "doc"`） → 段落内の画像を段落の外に出す → TipTapスキーマで検証 |
@@ -312,6 +314,26 @@ S-2（`docs/spike-mermaid.md`）で検証した方式。
 - 同様に、エクスポートが `meta` / `revisions` から生成した表紙（`.doc-cover`）と改訂履歴（`.doc-revisions`）、テーマ設定値から生成したヘッダー（`header.doc-header`）・フッター（`footer.doc-footer`）も取り除く（2-6・2-7）。本文に取り込むと、表紙のタイトルが見出しに、改訂履歴が本文の表になってしまうため。
 - TipTap JSONの `paragraph` 直下の `image` は、段落の外（同じ親の中の兄弟）に出す（`liftImagesFromParagraphs`）。画像はブロックノード（§5.1）で、段落の content は `inline*` のため、そのままではスキーマ違反になる。AIや他のTipTap環境は画像をインラインとして段落内に出力しがちなため、エラーにせず補正する。前後の文字は段落を分けて残し（属性は元の段落と同じ）、空になった段落は捨てる。分割した端の `hardBreak` は落とす。先頭に段落が必要な `listItem` / `taskItem` では、先頭の段落が画像だけの場合に空の段落を残す。HTML／Markdownは `generateJSON` が同様に補正するため対象外。
 - 自己形式HTMLの埋め込みテーマIDが手元に無い場合は、同梱の `theme` をユーザーテーマとして登録する。
+
+### 6.1 外部エディターで改変された自己形式HTML（2-15）
+
+エクスポートHTMLを別のエディターで編集すると、表示部分だけが変わり、埋め込みJSONは古いまま残る。埋め込みデータをそのまま優先すると、ブラウザで見えていた内容と違う文書が黙って復元されるため、改変を検出してユーザーに選ばせる。
+
+- **指紋**：`core/export/displayFingerprint.ts` の `computeDisplayHash(root: Element): string`。エクスポート（§7.1 手順6）とインポートで同じ関数を使う。
+  - バイト列ではなく、DOMを正規化した文字列から計算する（外部エディターは保存時に属性の順序・空白・改行・文字参照を書き換えるため、バイト列では誤検出する）。
+  - 正規化：`div.doc` の子孫を深さ優先でたどり、要素は「タグ名（小文字）＋次の属性」、テキストは連続する空白を1つにまとめたもの（空白だけのテキストは捨てる）を並べる。コメントは無視する。
+  - 対象の属性：`id`、`class`（トークンを並べ替える）、`href`、`src`、`colspan`、`rowspan`、`data-target-id`、`data-mermaid-index`。それ以外（`style` など）は外部エディターが書き換えやすいため含めない。
+  - `div.mermaid-diagram` の中身（SVG）は含めず、要素そのものだけを数える（SVGは整形で変わりやすく、手で編集する対象でもないため）。
+  - ハッシュは cyrb53（53ビット、純粋なTS）の16進。改ざんの防止ではなく変更の検出が目的のため、暗号学的な強さは要らない（`crypto.subtle` は非同期になるため使わない）。値には正規化の版を付ける（`fp1-xxxxxxxxxxxxxx`）。版の分からない値、`displayHash` の無い古いファイル、`div.doc` の無いHTMLは照合せず、従来どおり埋め込みデータから復元する。
+- **照合の結果**：`readSelfFormat` は指紋が一致すれば従来どおり `{ ok: true, data }` を返す。一致しなければ `{ ok: true, data, modified: { fromDisplay } }` を返し、どちらを使うかはUIが決める（判定と組み立ては `core` に置く）。
+- **`fromDisplay`（表示内容から組み立てた文書）**：
+  - 本文：表示HTMLの `div.doc` を外部HTMLの経路（DOMPurify → `normalizeHtml` → `generateJSON`）で取り込む。番号・表紙・改訂履歴・ヘッダー・フッターは従来どおり取り除かれ、見出し・図・表の `id`（`stableId`）と相互参照（`a.xref`）、目次（`nav.doc-toc`）は残る。
+  - Mermaid図：取り込む前に、`div.mermaid-diagram[data-mermaid-index="n"]` を、埋め込みデータの n 番目のMermaidコードブロックのソースから作った `<pre><code class="language-mermaid">` に置き換える。対応するソースが無い図は取り込まない（外部HTMLの扱いと同じ）。
+  - 表紙（`meta`）・改訂履歴（`revisions`）・`settingsOverride`・テーマは埋め込みデータから引き継ぐ。表示HTMLの表紙・改訂履歴に加えた編集は反映しない（ダイアログで明示する）。
+- **ダイアログ**（不一致のとき）：「このファイルは Shitate の外で編集されたようです。」
+  - 「表示内容から読み込む」（既定）：`fromDisplay` を使う。表紙・改訂履歴とMermaid図の外部での変更は反映されないことを添える。
+  - 「埋め込みデータから復元」：`data` を使う（外部での変更は破棄）。
+  - 「キャンセル」：読み込まない。
 
 ---
 
@@ -333,6 +355,7 @@ Mermaid図の描画は非同期でDOMが必要なため、`buildExportHtml` の�
    - 相互参照：解決済みの文字列（2-4）
 4. 表紙・改訂履歴・目次を `core/export/templates.ts` のテンプレート関数でHTML化する（表紙・改訂履歴は2-6）。テンプレートはエディター上部のプレビュー（§8.1）と共通。目次は、文書の先頭の `toc` ノードを本文から除き、`<main>` の前に `<nav class="doc-toc">` として出力する（`core/export/toc.ts`。2-5）。深さは `settingsOverride.tocDepth` ＞ テーマの `tocDepth`。
 5. 全体を組み立てる。埋め込みJSONには番号を含まない元の `state` を入れる。
+6. 組み立てた `div.doc` を DOMParser で解析して `computeDisplayHash` を計算し、埋め込みJSONの `displayHash` に入れる（§6.1。2-15）。
 
 ### 7.2 出力構造
 
@@ -370,7 +393,7 @@ Mermaid図の描画は非同期でDOMが必要なため、`buildExportHtml` の�
 - 埋め込みJSONは `<` を `\u003c` にエスケープし、`</script>` による途中終了を防ぐ。
 - CSS変数の文字列値は、`"` と `\` と改行をエスケープする。
 - 画像は `src` のData URIのまま出力する（外部参照にしない）。
-- Mermaid図はSVGをインラインで出力する（`<div class="mermaid-diagram"><svg …>…</svg></div>`）。SVGは正規化済み（§5.9：サニタイズ済み、外部参照なし、`foreignObject` なし）で、IDは文書内で一意。
+- Mermaid図はSVGをインラインで出力する（`<div class="mermaid-diagram" data-mermaid-index="0"><svg …>…</svg></div>`。`data-mermaid-index` は文書内のMermaidコードブロックの出現順で、外部で改変されたファイルを読み込むときにソースと対応づけるために使う。§6.1。2-15）。SVGは正規化済み（§5.9：サニタイズ済み、外部参照なし、`foreignObject` なし）で、IDは文書内で一意。
 - 出力はブラウザ表示用（ページ分割なし）。PDF用の組版は §10 で別に行う。
 - 画像ビューア（§7.3）のため、`<head>` の最後に `<style id="image-viewer">`、埋め込みJSONの後に `<script>`（インライン）を出力する。
 
@@ -563,6 +586,7 @@ type StoreName = "drafts" | "draftMeta" | "themes" | "settings";
 | インポート | 単体 | Markdown（GFM表、ネストしたリスト）、外部HTML、JSON、自己形式HTML |
 | エクスポート | 単体 | 出力構造、エスケープ（`</script>`、CSS文字列） |
 | **往復（最重要）** | 単体 | `fixtures/` の各文書で「エクスポート → インポート」後の `DocumentState` が元と一致する |
+| 外部での改変の検出 | 単体・E2E | 正規化（属性の順序・空白・文字参照・SVGの整形では指紋が変わらず、本文の文字・構造の変更では変わる）、往復で常に一致すること、`fromDisplay` の組み立て（ID・相互参照・Mermaidのソース・表紙の引き継ぎ）（単体）。不一致時のダイアログの3つの選択（E2E） |
 | stableId | 単体 | 重複IDの振り直し、既存IDの維持 |
 | Mermaid図 | 単体・E2E | 判定・ソースの収集・SVGの正規化・`replaceMermaidBlocks`・`pre.mermaid` の読込・PDF用の参照の修正（単体）。jsdom では Mermaid が描画できないため、エディターの図とエラー表示、エクスポートHTMLとPDFへの出力はE2E |
 | 表操作 | E2E | セル結合・分割、セル内への箇条書き・画像の挿入、エクスポート後の `colspan`/`rowspan` |
