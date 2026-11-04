@@ -41,7 +41,7 @@ export function PdfPreview({ editor, onClose }: PdfPreviewProps) {
       return;
     }
     setApi(frameApi);
-    frameApi.render(buildPdfRequest(editor), (event: PdfFrameEvent) => {
+    const onEvent = (event: PdfFrameEvent) => {
       switch (event.type) {
         case 'progress':
           setStatus({ kind: 'loading', pages: event.pages });
@@ -57,7 +57,18 @@ export function PdfPreview({ editor, onClose }: PdfPreviewProps) {
           setStatus({ kind: 'error', message: event.message });
           return;
       }
-    });
+    };
+    buildPdfRequest(editor)
+      .then((request) => {
+        frameApi.render(request, onEvent);
+      })
+      .catch((error: unknown) => {
+        console.error('Failed to prepare the PDF', error);
+        setStatus({
+          kind: 'error',
+          message: error instanceof Error ? error.message : String(error),
+        });
+      });
   };
 
   const done = status.kind === 'done' ? status : null;

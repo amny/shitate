@@ -1,5 +1,6 @@
 import basicMd from '../../../fixtures/basic.md?raw';
 import complexTableHtml from '../../../fixtures/complex-table.html?raw';
+import diagramsMd from '../../../fixtures/diagrams.md?raw';
 import specFullJson from '../../../fixtures/spec-full.json?raw';
 import { createExtensions } from '../../editor/createEditor';
 import type { DocNode, DocRoot } from '../model';
@@ -128,6 +129,47 @@ describe('importFile: external HTML (fixtures/complex-table.html)', () => {
 
   it('keeps the surrounding headings and paragraphs', () => {
     expect(ofType(doc, 'heading').map(textOf)).toEqual(['画面設計書', '画面一覧', '入力項目']);
+  });
+});
+
+describe('importFile: Mermaid diagrams', () => {
+  const mermaidBlocks = (doc: DocRoot) =>
+    ofType(doc, 'codeBlock')
+      .filter((block) => block.attrs?.['language'] === 'mermaid')
+      .map(textOf);
+
+  it('reads Markdown mermaid fences as Mermaid code blocks (fixtures/diagrams.md)', () => {
+    const { doc } = importOk('diagrams.md', diagramsMd);
+    expect(mermaidBlocks(doc)).toHaveLength(3);
+    expect(mermaidBlocks(doc)[0]).toMatch(/^flowchart LR\n {2}ログイン --> 一覧\[顧客一覧\]/);
+    expect(ofType(doc, 'codeBlock').map((block) => block.attrs?.['language'])).toEqual([
+      'mermaid',
+      'mermaid',
+      'mermaid',
+      'sql',
+    ]);
+  });
+
+  it('reads pre.mermaid and div.mermaid from external HTML', () => {
+    const { doc } = importOk(
+      'mermaid.html',
+      '<pre class="mermaid">\nflowchart LR\n  A --&gt; B\n</pre>' +
+        '<div class="mermaid">sequenceDiagram\n  A->>B: 要求</div>',
+    );
+    expect(mermaidBlocks(doc)).toEqual([
+      'flowchart LR\n  A --> B',
+      'sequenceDiagram\n  A->>B: 要求',
+    ]);
+  });
+
+  it('leaves out diagrams that have no source (rendered by Mermaid or by the export)', () => {
+    const { doc } = importOk(
+      'rendered.html',
+      '<p>前</p><div class="mermaid" data-processed="true"><svg><text>A</text></svg></div>' +
+        '<div class="mermaid-diagram"><svg><text>顧客一覧</text></svg></div><p>後</p>',
+    );
+    expect(mermaidBlocks(doc)).toEqual([]);
+    expect(textOf(doc as DocNode)).toBe('前後');
   });
 });
 

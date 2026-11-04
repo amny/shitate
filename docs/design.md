@@ -33,6 +33,7 @@
 | Markdown変換 | markdown-it（GFM表対応） | Markdown → HTML → TipTap JSON の2段変換にし、TipTapのMarkdown拡張の状況に依存しない |
 | HTMLサニタイズ | DOMPurify | 外部HTML読込時 |
 | シンタックスハイライト | lowlight（highlight.js の文法）、`@tiptap/extension-code-block-lowlight` | コードブロック（§5.7）。対応言語だけを登録する |
+| 図（Mermaid） | `mermaid`（12.1系） | コードブロックの図をSVGに描画する（§5.9）。動的 `import()` で必要時だけ読み込む。S-2（`docs/spike-mermaid.md`） |
 | スキーマ検証 | zod | 埋め込みJSONの検証 |
 | IndexedDB | idb | |
 | ID生成 | nanoid | |
@@ -67,7 +68,8 @@ src/
       tableCellGuard.ts   # セル内の見出し・図・表キャプションを除去（§5.2）
       crossRef.ts
       toc.ts
-      codeBlock.ts        # シンタックスハイライトと言語選択（§5.7）
+      codeBlock.ts        # シンタックスハイライトと言語選択（§5.7）、Mermaid図のプレビュー（§5.9）
+    mermaid/              # Mermaidの読み込み・描画・キャッシュ（§5.9。DOMが必要なため core に置かない）
     nodeviews/            # CrossRef、Toc、Figure等のReact NodeView
     scrollToNode.ts       # ノードへのスクロールとカーソル移動（目次・アウトラインで共用。§5.8）
     ui/                   # 表操作メニュー、参照挿入ダイアログ等
@@ -77,6 +79,7 @@ src/
     labels/               # computeLabels
     outline/              # アウトラインパネルの項目（§5.8）
     highlight/            # コードブロックの対応言語と字句分割（§5.7）
+    diagram/              # Mermaid図の判定・ソースの収集・SVGの正規化（§5.9）
     import/               # markdown / html / json / 自己形式HTML の読込
     export/               # エクスポートHTMLの組み立て
     theme/                # テーマのCSS変数生成、ビルトインテーマ定義、テーマ契約、編集用の操作
@@ -175,7 +178,7 @@ export interface EmbeddedData {
 |---|---|---|---|
 | heading | block | `inline*` / `level`, `id`, `numbered`(既定true) | StarterKitのHeadingを拡張 |
 | paragraph, bulletList, orderedList, blockquote, horizontalRule | block | StarterKit既定 | |
-| codeBlock | block | `text*` / `language`(既定null) | CodeBlockLowlightを拡張（§5.7） |
+| codeBlock | block | `text*` / `language`(既定null) | CodeBlockLowlightを拡張（§5.7）。`language` が `mermaid` のものはMermaid図（§5.9） |
 | image | block | `src`, `alt`, `title`, `width`, `height` | block画像で統一する（inlineにしない）。`width` / `height` はリサイズ後の表示サイズ（px、未指定は `null`） |
 | figure | block | `image figcaption` / `id` | 本文の図。図番号の対象 |
 | figcaption | block | `inline*` | 図のキャプション（画像の下） |
@@ -269,6 +272,26 @@ export function formatRef(labels: Labels, targetId: string): string | null;
 - クリック：見出し・図・表・目次は `scrollToNode`（`editor/scrollToNode.ts`）でスクロールし、カーソルを移す（見出し・キャプションはその先頭のテキストブロックの先頭、目次はノード選択）。表紙・改訂履歴は本文の外なので、`[data-preface="cover"]` / `[data-preface="revisions"]` のプレビューへスクロールするだけにする。
 - エディターの状態は `useEditorState` で購読し、ラベルか選択が変わったときだけ再描画する。
 
+### 5.9 Mermaid図
+
+S-2（`docs/spike-mermaid.md`）で検証した方式。
+
+- **データ**：`language` が `mermaid`（大文字小文字は区別しない）の `codeBlock` をMermaid図とする。文書に保存するのはソースだけで、SVGは文書に書き込まない（番号やハイライトと同じ）。新しいノードは作らないので、スキーマと `EmbeddedData.version` は変えない。
+  - 図番号・キャプション・相互参照の対象にはしない（`figure` の content は `image figcaption` のまま）。必要になれば、専用ノードと `figure` の拡張を別タスクで行う。
+  - `mermaid` は `CODE_LANGUAGES` に入れない（ハイライトしない）。判定は `core/diagram` の `isMermaidLanguage` に一元化する。
+- **描画**（`src/editor/mermaid/`）：
+  - `mermaid` と Noto Sans JP（`@fontsource/noto-sans-jp` の 400 / 700）を、最初の描画のときに動的 `import()` で読み込む（通常の編集画面のチャンクに含めない）。描画の前に `document.fonts.load` でフォントを読み込む（`htmlLabels: false` では描画時のフォントで文字幅を測るため）。
+  - 設定：`startOnLoad: false`、`securityLevel: 'strict'`、`theme: 'neutral'`、`htmlLabels: false`（`foreignObject` を使わない純粋なSVGにする）、`fontFamily: '"Noto Sans JP", sans-serif'`（PDFのフォント §10 と同じ）。
+  - 描画結果は `core/diagram` の `normalizeMermaidSvg` で正規化する：DOMPurify（SVGプロファイル）でサニタイズし、`viewBox` から `width` / `height` を設定し、ルートの `style` を `max-width: 100%; height: auto` にする（用紙幅より大きい図だけ縮小する）。
+  - SVG内の要素ID（`<style>` のセレクタ、`marker` の参照）は図ごとに一意でなければならない。描画は一時的なID（ランダムな文字列）で行い、ソースをキーに正規化後のSVGをキャッシュする（最大100件）。使うときに一時的なIDを、その場で決めたIDに置き換える（エディターは表示ごとの連番、エクスポートは文書内の出現順 `mermaid-1`、`mermaid-2` …）。
+  - 結果は `{ ok: true, svg } | { ok: false, message }`。構文エラーはMermaidのメッセージ（行番号つき）を返す。
+- **エディター**：`HighlightedCodeBlock` の NodeView で、Mermaid図のときだけ次を加える。
+  - 言語の選択欄の「テキスト」の次に「Mermaid（図）」（値 `mermaid`）を置く。
+  - コードの下に図のプレビュー（`div.mermaid-diagram`、`contentEditable=false`）を表示する。入力が止まってから0.4秒後に描画し、描画中も直前の図を残す。構文エラーのときは、直前の図を残したまま、プレビューの上にエラーを警告表示する（`.mermaid-error`。編集UIなので `editor-ui.css`）。
+  - 「コードを隠す／コードを表示」の切り替えボタンを置く。状態はNodeViewだけが持ち、文書には保存しない（既定は表示）。隠しているときに図をクリックすると、コードを表示してカーソルを置く。
+  - プレビュー・エラー表示・切り替えボタンは編集UIで、エクスポートには出ない。
+- **エクスポート**：§7.1。描画できなかった図はコードブロックのまま出力する（文書のソースは失わない）。
+
 ---
 
 ## 6. インポート
@@ -284,6 +307,7 @@ export function formatRef(labels: Labels, targetId: string): string | null;
 
 - 外部HTML／Markdown／JSONから読んだ場合、`meta` と `revisions` は空で初期化し、テーマは現在の選択を使う。
 - `<figure><img><figcaption>` は parseHTML で `figure` に変換する。表のキャプションは、解析の前に `div.table-figure > div.table-caption + table` の形に整えてから `tableFigure` に変換する（対象：`<table><caption>…</caption>…</table>`、`<figure><table>…</table><figcaption>…</figcaption></figure>`）。1つの要素から2つのノードは作れないため。
+- 外部HTMLの `pre.mermaid` / `div.mermaid`（Mermaidの標準の埋め込み形式。中身の文字列がソース）は、`language: "mermaid"` の `codeBlock` として取り込む（§5.9）。Markdownの ` ```mermaid ` は markdown-it が `<pre><code class="language-mermaid">` にするため、変更なしで取り込まれる。エクスポートHTMLの `div.mermaid-diagram`（SVG）はソースを持たないため、外部HTMLとして読み込んだ場合は取り込まない（埋め込みデータからは復元できる）。
 - エクスポートが差し込んだ番号（`span.heading-number` / `span.caption-number`）は、外部HTMLとしての読み込み時と貼り付け時に取り除く（番号が本文の文字として入らないようにするため）。
 - 同様に、エクスポートが `meta` / `revisions` から生成した表紙（`.doc-cover`）と改訂履歴（`.doc-revisions`）、テーマ設定値から生成したヘッダー（`header.doc-header`）・フッター（`footer.doc-footer`）も取り除く（2-6・2-7）。本文に取り込むと、表紙のタイトルが見出しに、改訂履歴が本文の表になってしまうため。
 - TipTap JSONの `paragraph` 直下の `image` は、段落の外（同じ親の中の兄弟）に出す（`liftImagesFromParagraphs`）。画像はブロックノード（§5.1）で、段落の content は `inline*` のため、そのままではスキーマ違反になる。AIや他のTipTap環境は画像をインラインとして段落内に出力しがちなため、エラーにせず補正する。前後の文字は段落を分けて残し（属性は元の段落と同じ）、空になった段落は捨てる。分割した端の `hardBreak` は落とす。先頭に段落が必要な `listItem` / `taskItem` では、先頭の段落が画像だけの場合に空の段落を残す。HTML／Markdownは `generateJSON` が同様に補正するため対象外。
@@ -295,11 +319,14 @@ export function formatRef(labels: Labels, targetId: string): string | null;
 
 `src/core/export/buildExportHtml(state, theme, options)` が文字列を返す純粋関数。
 
+Mermaid図の描画は非同期でDOMが必要なため、`buildExportHtml` の中では行わない。呼び出し側（`useExportDocument`・`pdfRequest`・テーマ編集のプレビュー）が先に `prepareDiagrams(doc)`（`src/editor/mermaid/`）で文書内のMermaid図を出現順に描画し、`ExportOptions.diagrams`（出現順の正規化済みSVG。描画できなかった図は `null`）として渡す。描画できなかった図があれば、エクスポートは続け、件数を警告で知らせる（「Mermaidの図2件を描画できなかったため、コードのまま出力しました」）。
+
 ### 7.1 手順
 
 1. `computeLabels(state.doc)` を計算する。
 2. 本文を `generateHTML` でHTMLにする（スキーマの `renderHTML` は番号を出力しない）。
    - 対応言語のコードブロックは、手順3の後に `core/export/highlightCode.ts` の `highlightCodeBlocks` で中身を `<span class="hljs-…">` に置き換える（§5.7）。コードのテキストはエスケープして出力する。
+   - Mermaid図のコードブロック（`<pre><code class="language-mermaid">`）は、`core/export/diagrams.ts` の `replaceMermaidBlocks` で、出現順に `options.diagrams` のSVGを使って `<div class="mermaid-diagram">{SVG}</div>` に置き換える（§5.9）。SVGが `null`・足りないときはコードブロックのまま残す。
 3. 本文HTMLを DOMParser で解析し、`id` をもとに解決済みの値を差し込む（番号用の属性をスキーマに持たせると、エディターのJSONに余分な属性が入り、`renderHTML` の hole の制約で本文を余分な要素で包む必要があるため。2-2で変更）。
    - 見出し：先頭に `<span class="heading-number">2.1</span>`（採番しない見出し・H6には付けない）
    - 図・表：キャプションの先頭に番号（2-3）
@@ -343,6 +370,7 @@ export function formatRef(labels: Labels, targetId: string): string | null;
 - 埋め込みJSONは `<` を `\u003c` にエスケープし、`</script>` による途中終了を防ぐ。
 - CSS変数の文字列値は、`"` と `\` と改行をエスケープする。
 - 画像は `src` のData URIのまま出力する（外部参照にしない）。
+- Mermaid図はSVGをインラインで出力する（`<div class="mermaid-diagram"><svg …>…</svg></div>`）。SVGは正規化済み（§5.9：サニタイズ済み、外部参照なし、`foreignObject` なし）で、IDは文書内で一意。
 - 出力はブラウザ表示用（ページ分割なし）。PDF用の組版は §10 で別に行う。
 - 画像ビューア（§7.3）のため、`<head>` の最後に `<style id="image-viewer">`、埋め込みJSONの後に `<script>`（インライン）を出力する。
 
@@ -355,6 +383,7 @@ export function formatRef(labels: Labels, targetId: string): string | null;
 - スクリプトとCSSは文書のデータを含まない定数（`src/core/export/imageViewer.ts`）なので、エスケープの対象になる値はない。外部を参照しない。
 - ビューアの要素（`.doc-image-viewer` など）は実行時に `.doc` の外に作る。テーマCSSは `.doc` 以下にスコープされていて影響しないため、テーマ契約（§8.2）には含めない。
 - PDF組版（§10）に渡すHTMLには含めない（`buildExportHtml` の `imageViewer: false`）。テーマ編集画面のプレビューは `sandbox` のiframeなのでスクリプトは実行されない。
+- Mermaid図（SVG）は対象にしない（`img` ではないため）。
 - 埋め込みデータは変わらないため、`EmbeddedData.version` は変えない。外部HTMLとして読み込んだ場合も、スクリプトは除去され、ダイアログは静的HTMLに無いため本文に入らない。
 
 ---
@@ -382,6 +411,7 @@ export function formatRef(labels: Labels, targetId: string): string | null;
 | 改訂履歴 | `.doc-revisions` |
 | 目次 | `.doc-toc`, `.toc-title`, `.toc-item`, `.toc-level-1`〜`.toc-level-5`, `.toc-number` |
 | 本文 | `.doc-body`, `.heading-number`, `figure`, `figcaption`, `.table-figure`, `.table-figure.is-landscape`, `.table-caption`, `.caption-number`, `.xref` |
+| Mermaid図 | `.mermaid-diagram`（図を包む要素。余白・配置を指定する。中のSVGの要素はMermaidが描くもので、契約に含めない。§5.9） |
 | コードのハイライト | `hljs-` で始まるクラス（`.hljs-keyword`、`.hljs-string`、`.hljs-comment` など。highlight.js のクラス名。§5.7） |
 | CSS変数 | `--header-logo`, `--copyright`, `--base-font-size` |
 
@@ -499,6 +529,8 @@ type StoreName = "drafts" | "draftMeta" | "themes" | "settings";
   - 目次のページ番号は `target-counter(attr(href url), page)`
   - ブラウザ表示用の `.doc-header` / `.doc-footer` は非表示（PDFは余白ボックスを使う）
   - `.table-figure.is-landscape { page: landscape; }`
+  - Mermaid図の途中で改ページしない（`.mermaid-diagram { break-inside: avoid; }`。S-2）
+- **SVG内の参照の修正**（S-2）：Vivliostyle は組版時にSVGの属性の `url(#id)` を自分のID（`url("#viv-id-<文書のURL>:0023<id>")`）に書き換えるが、参照先（Mermaidの矢印の `marker`）の `id` は書き換えないため、矢印が消える。組版が完了するたび（`readystatechange` が `complete`）に、ページ内のSVGの属性の参照を元の `#id` に戻す（`src/pdf/svgRefs.ts`）。
 
 ### 10.1 ページ設定
 
@@ -532,11 +564,12 @@ type StoreName = "drafts" | "draftMeta" | "themes" | "settings";
 | エクスポート | 単体 | 出力構造、エスケープ（`</script>`、CSS文字列） |
 | **往復（最重要）** | 単体 | `fixtures/` の各文書で「エクスポート → インポート」後の `DocumentState` が元と一致する |
 | stableId | 単体 | 重複IDの振り直し、既存IDの維持 |
+| Mermaid図 | 単体・E2E | 判定・ソースの収集・SVGの正規化・`replaceMermaidBlocks`・`pre.mermaid` の読込・PDF用の参照の修正（単体）。jsdom では Mermaid が描画できないため、エディターの図とエラー表示、エクスポートHTMLとPDFへの出力はE2E |
 | 表操作 | E2E | セル結合・分割、セル内への箇条書き・画像の挿入、エクスポート後の `colspan`/`rowspan` |
 | 自動保存 | E2E | 再読込後に復元できる |
 | Electron | 単体・E2E | `accept` からダイアログのフィルターへの変換、画像の種類判定、`app://` のパス解決（単体）。Electron版の起動と、ブリッジ経由でアダプターが選ばれること（E2E、Playwrightの `_electron`） |
 
-`fixtures/` には最低限次を用意する：`basic.md`、`complex-table.html`（結合セル・セル内リスト・入れ子表・セル内画像）、`spec-full.json`（採番5階層・図表・相互参照を含む）。
+`fixtures/` には最低限次を用意する：`basic.md`、`complex-table.html`（結合セル・セル内リスト・入れ子表・セル内画像）、`spec-full.json`（採番5階層・図表・相互参照を含む）、`diagrams.md`（Mermaid図。構文エラーの図を含む）。
 
 ---
 

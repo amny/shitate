@@ -4,6 +4,7 @@ import { CoreViewer, Navigation, PageViewMode, ReadyState } from '@vivliostyle/c
 import type { PdfFrameApi, PdfFrameEvent, PdfFrameWindow, PdfRenderRequest, PdfView } from './api';
 import { documentText, prepareHtmlForPdf } from './prepareHtml';
 import { fixPrintPageSizes } from './printSizes';
+import { fixSvgRefs } from './svgRefs';
 
 const viewportElement = document.getElementById('viewport');
 if (!viewportElement) {
@@ -68,7 +69,10 @@ async function render(
     if (payload.internal) current.navigateToInternalUrl(payload.href);
   });
   current.addListener('readystatechange', () => {
-    if (current.readyState !== ReadyState.COMPLETE || done) return;
+    if (current.readyState !== ReadyState.COMPLETE) return;
+    // Every layout (also after a view change) rewrites the SVG references again.
+    fixSvgRefs(viewport);
+    if (done) return;
     done = true;
     pageCount = viewport.querySelectorAll('[data-vivliostyle-page-container]').length;
     fixPrintPageSizes(document, viewport);

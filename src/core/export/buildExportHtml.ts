@@ -3,6 +3,7 @@ import type { Extensions, JSONContent } from '@tiptap/core';
 import { computeLabels } from '../labels';
 import { EMBEDDED_DATA_FORMAT, EMBEDDED_DATA_VERSION } from '../model';
 import type { DocumentState, EmbeddedData, Theme } from '../model';
+import { replaceMermaidBlocks } from './diagrams';
 import { highlightCodeBlocks } from './highlightCode';
 import { escapeHtml, escapeStyleContent, serializeJsonForScript } from './escape';
 import { IMAGE_VIEWER_CSS, IMAGE_VIEWER_SCRIPT, IMAGE_VIEWER_STYLE_ID } from './imageViewer';
@@ -20,6 +21,13 @@ export interface ExportOptions {
    * Off for the PDF, which is not interactive. Default: true.
    */
   imageViewer?: boolean;
+  /**
+   * The Mermaid diagrams of the document as normalized SVGs, in document order; null for a
+   * diagram that could not be rendered (design.md §5.9, §7). Rendering needs the DOM and is
+   * asynchronous, so the caller prepares them (prepareDiagrams). A diagram without an SVG is
+   * exported as its code block. Default: none.
+   */
+  diagrams?: readonly (string | null)[];
 }
 
 export const EMBEDDED_DATA_ELEMENT_ID = 'doc-data';
@@ -38,7 +46,7 @@ export function createEmbeddedData(state: DocumentState, theme: Theme): Embedded
 export function buildExportHtml(
   state: DocumentState,
   theme: Theme,
-  { extensions, imageViewer = true }: ExportOptions,
+  { extensions, imageViewer = true, diagrams = [] }: ExportOptions,
 ): string {
   const data: EmbeddedData = {
     format: EMBEDDED_DATA_FORMAT,
@@ -54,7 +62,10 @@ export function buildExportHtml(
     : null;
   const headerFooter = resolveHeaderFooter(theme.settings, state.settingsOverride);
   const body = highlightCodeBlocks(
-    insertResolvedLabels(generateHTML(bodyDoc as JSONContent, extensions), labels),
+    replaceMermaidBlocks(
+      insertResolvedLabels(generateHTML(bodyDoc as JSONContent, extensions), labels),
+      diagrams,
+    ),
   );
   const title = state.meta.title.trim() || FALLBACK_TITLE;
 

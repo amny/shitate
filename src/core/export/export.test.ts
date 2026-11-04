@@ -1,5 +1,6 @@
 import basicMd from '../../../fixtures/basic.md?raw';
 import complexTableHtml from '../../../fixtures/complex-table.html?raw';
+import diagramsMd from '../../../fixtures/diagrams.md?raw';
 import specFullJson from '../../../fixtures/spec-full.json?raw';
 import { createExtensions } from '../../editor/createEditor';
 import { importFile } from '../import';
@@ -56,6 +57,7 @@ describe('export -> import round trip (fixtures)', () => {
     ['basic.md', basicMd],
     ['complex-table.html', complexTableHtml],
     ['spec-full.json', specFullJson],
+    ['diagrams.md', diagramsMd],
   ])('%s', (name, text) => {
     const state = createState(importDocument(name, text));
     const result = reimport(buildExportHtml(state, theme, { extensions }));
@@ -313,7 +315,9 @@ describe('buildExportHtml: code highlighting', () => {
     content: [code('sql', "SELECT * FROM users WHERE name = '<b>';"), code(null, 'SELECT 1;')],
   });
   const html = buildExportHtml(state, theme, { extensions });
-  const blocks = [...new DOMParser().parseFromString(html, 'text/html').querySelectorAll('pre > code')];
+  const blocks = [
+    ...new DOMParser().parseFromString(html, 'text/html').querySelectorAll('pre > code'),
+  ];
 
   it('outputs hljs spans for a supported language and plain text otherwise', () => {
     expect(blocks.map((block) => block.textContent)).toEqual([
@@ -328,6 +332,43 @@ describe('buildExportHtml: code highlighting', () => {
   it('keeps the highlighting out of the embedded data', () => {
     const result = reimport(html);
     expect(result.ok && result.kind === 'embedded' && result.data.state).toEqual(state);
+  });
+});
+
+describe('buildExportHtml: Mermaid diagrams', () => {
+  const state = createState(importDocument('diagrams.md', diagramsMd));
+  const svg = (id: string) =>
+    `<svg xmlns="http://www.w3.org/2000/svg" id="${id}" width="10" height="10"><text>${id}</text></svg>`;
+  // The third diagram of the fixture has a syntax error and could not be rendered.
+  const html = buildExportHtml(state, theme, {
+    extensions,
+    diagrams: [svg('mermaid-1'), svg('mermaid-2'), null],
+  });
+  const body = new DOMParser().parseFromString(html, 'text/html').querySelector('.doc-body');
+
+  it('outputs the rendered diagrams as inline SVG and the others as code', () => {
+    const diagrams = [...(body?.querySelectorAll('div.mermaid-diagram') ?? [])];
+    expect(diagrams.map((d) => d.querySelector(':scope > svg')?.id)).toEqual([
+      'mermaid-1',
+      'mermaid-2',
+    ]);
+    const code = [...(body?.querySelectorAll('pre > code') ?? [])];
+    expect(code.map((c) => c.className)).toEqual(['language-mermaid', 'language-sql']);
+    expect(code[0]?.textContent).toMatch(/^flowchart TD\n {2}A -->\n?$/);
+    expect(code[1]?.querySelector('.hljs-keyword')).not.toBeNull();
+  });
+
+  it('keeps the diagrams out of the embedded data', () => {
+    const result = reimport(html);
+    expect(result.ok && result.kind === 'embedded' && result.data.state).toEqual(state);
+  });
+
+  it('outputs every diagram as code without diagrams', () => {
+    const plain = new DOMParser()
+      .parseFromString(buildExportHtml(state, theme, { extensions }), 'text/html')
+      .querySelector('.doc-body');
+    expect(plain?.querySelector('.mermaid-diagram')).toBeNull();
+    expect(plain?.querySelectorAll('pre > code.language-mermaid')).toHaveLength(3);
   });
 });
 

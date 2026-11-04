@@ -101,6 +101,12 @@ describe('PDF_BASE_CSS', () => {
     expect(PDF_BASE_CSS).not.toMatch(/\.table-figure\s*\{[^}]*break-inside/);
   });
 
+  it('does not split Mermaid diagrams across pages (S-2)', () => {
+    expect(PDF_BASE_CSS).toMatch(
+      /\.doc \.doc-body \.mermaid-diagram,[^{]*\{\s*break-inside: avoid;/,
+    );
+  });
+
   it('keeps tables with resized columns within the page width', () => {
     expect(PDF_BASE_CSS).toMatch(/\.doc \.doc-body table \{\s*max-width: 100%;/);
   });

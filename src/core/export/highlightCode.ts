@@ -4,7 +4,7 @@ import { highlightCodeToHtml, resolveCodeLanguage } from '../highlight';
  * A code block as rendered by the codeBlock extension: `<pre><code class="language-x">`.
  * Its content is text only (no marks), so it has no tags, and `</code>` cannot appear in it.
  */
-const CODE_BLOCK_PATTERN = /<pre><code(?: class="([^"]*)")?>([^<]*)<\/code><\/pre>/g;
+export const CODE_BLOCK_PATTERN = /<pre><code(?: class="([^"]*)")?>([^<]*)<\/code><\/pre>/g;
 
 const LANGUAGE_CLASS_PREFIX = 'language-';
 
@@ -26,19 +26,27 @@ export function decodeHtmlText(html: string): string {
   });
 }
 
+/** The language named by a rendered code block's `class` attribute (`language-x`), if any. */
+export function codeBlockLanguage(classAttr: string | undefined): string | undefined {
+  return decodeHtmlText(classAttr ?? '')
+    .split(/\s+/)
+    .find((name) => name.startsWith(LANGUAGE_CLASS_PREFIX))
+    ?.slice(LANGUAGE_CLASS_PREFIX.length);
+}
+
 /**
  * Adds syntax highlighting to the code blocks of rendered body HTML (design.md §7.1):
  * the code is replaced by `<span class="hljs-…">` runs, the same runs the editor shows as
  * decorations. Blocks without a supported language are left as they are.
  */
 export function highlightCodeBlocks(html: string): string {
-  return html.replace(CODE_BLOCK_PATTERN, (block, classAttr: string | undefined, content: string) => {
-    const language = decodeHtmlText(classAttr ?? '')
-      .split(/\s+/)
-      .find((name) => name.startsWith(LANGUAGE_CLASS_PREFIX))
-      ?.slice(LANGUAGE_CLASS_PREFIX.length);
-    if (!resolveCodeLanguage(language)) return block;
-    const highlighted = highlightCodeToHtml(decodeHtmlText(content), language ?? null);
-    return `<pre><code class="${classAttr ?? ''}">${highlighted}</code></pre>`;
-  });
+  return html.replace(
+    CODE_BLOCK_PATTERN,
+    (block, classAttr: string | undefined, content: string) => {
+      const language = codeBlockLanguage(classAttr);
+      if (!resolveCodeLanguage(language)) return block;
+      const highlighted = highlightCodeToHtml(decodeHtmlText(content), language ?? null);
+      return `<pre><code class="${classAttr ?? ''}">${highlighted}</code></pre>`;
+    },
+  );
 }

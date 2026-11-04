@@ -1,5 +1,5 @@
 import type { Editor } from '@tiptap/react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent, PointerEvent, RefObject } from 'react';
 import { buildExportHtml } from '../../core/export';
 import type { Theme } from '../../core/model';
@@ -12,6 +12,7 @@ import {
 } from '../../core/theme/previewLayout';
 import type { WidthRange } from '../../core/theme/previewLayout';
 import { createExtensions } from '../../editor/createEditor';
+import { prepareDiagrams } from '../../editor/mermaid';
 import { PDF_PREVIEW_PATH } from '../../pdf/api';
 import type { PdfFrameWindow } from '../../pdf/api';
 import { collectDocumentState } from '../documentState';
@@ -162,16 +163,31 @@ function ScreenPreview({ editor, theme }: PreviewFrameProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const viewportWidth = useElementWidth(viewportRef);
   const zoom = viewportWidth === null ? null : previewZoom(viewportWidth);
-  const html = useMemo(
-    () =>
-      buildExportHtml(collectDocumentState(editor), theme, {
-        extensions: createExtensions(),
-      }),
-    [editor, theme],
-  );
+  const [html, setHtml] = useState<string | null>(null);
+  useEffect(() => {
+    let current = true;
+    const state = collectDocumentState(editor);
+    // Mermaid diagrams are rendered first (design.md §7); this is cached after the first time.
+    prepareDiagrams(state.doc)
+      .catch((error: unknown) => {
+        console.error('Failed to render the Mermaid diagrams for the preview', error);
+        return { diagrams: [] };
+      })
+      .then(({ diagrams }) => {
+        if (current) {
+          setHtml(buildExportHtml(state, theme, { extensions: createExtensions(), diagrams }));
+        }
+      })
+      .catch((error: unknown) => {
+        console.error('Failed to build the preview', error);
+      });
+    return () => {
+      current = false;
+    };
+  }, [editor, theme]);
   return (
     <div ref={viewportRef} className="theme-preview-viewport">
-      {zoom !== null && (
+      {zoom !== null && html !== null && (
         <iframe
           className="theme-preview-scaled-frame"
           title="テーマのプレビュー（画面）"
@@ -197,11 +213,23 @@ function PdfPreviewFrame({ editor, theme }: PreviewFrameProps) {
   useEffect(() => {
     const api = (frameRef.current?.contentWindow as PdfFrameWindow | null)?.shitatePdf;
     if (!ready || !api) return;
+    let current = true;
     setStatus('組版しています…');
-    api.render(buildPdfRequest(editor, theme), (event) => {
-      if (event.type === 'done') setStatus(`全 ${String(event.pageCount)} ページ`);
-      if (event.type === 'error') setStatus(`組版できませんでした（${event.message}）`);
-    });
+    buildPdfRequest(editor, theme)
+      .then((request) => {
+        if (!current) return;
+        api.render(request, (event) => {
+          if (event.type === 'done') setStatus(`全 ${String(event.pageCount)} ページ`);
+          if (event.type === 'error') setStatus(`組版できませんでした（${event.message}）`);
+        });
+      })
+      .catch((error: unknown) => {
+        console.error('Failed to prepare the PDF preview', error);
+        if (current) setStatus('組版できませんでした');
+      });
+    return () => {
+      current = false;
+    };
   }, [editor, theme, ready]);
 
   return (

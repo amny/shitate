@@ -1,0 +1,4 @@
+# Postinstall scripts of transitive deps (core-js, es5-ext) only print messages; do not run them.
+allowBuilds:
+  core-js: false
+  es5-ext: false

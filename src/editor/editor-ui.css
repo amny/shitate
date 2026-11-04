@@ -299,31 +299,77 @@
 }
 
 /*
- * Code block language picker (HighlightedCodeBlock). Editing UI only; not exported.
- * Shown on hover / keyboard focus so it does not cover the first line of the code.
+ * Code block language picker and Mermaid diagram button (HighlightedCodeBlock). Editing UI
+ * only; not exported. Shown on hover / keyboard focus so it does not cover the first line
+ * of the code.
  */
-.doc-body.ProseMirror pre.code-block-view {
+.doc-body.ProseMirror .code-block-view {
   position: relative;
 }
 
-.doc-body.ProseMirror .code-language-select {
+.doc-body.ProseMirror .code-block-tools {
   position: absolute;
   top: 4px;
   right: 4px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.doc-body.ProseMirror .code-block-view:hover .code-block-tools,
+.doc-body.ProseMirror .code-block-tools:focus-within {
+  opacity: 1;
+}
+
+.doc-body.ProseMirror .code-language-select,
+.doc-body.ProseMirror .code-diagram-toggle {
   padding: 1px 4px;
   border: 1px solid #d0d4da;
   border-radius: 3px;
   background: #ffffff;
   color: #3b4049;
-  font: 12px/1.4 system-ui, sans-serif;
+  font:
+    12px/1.4 system-ui,
+    sans-serif;
   cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.12s;
 }
 
-.doc-body.ProseMirror pre.code-block-view:hover .code-language-select,
-.doc-body.ProseMirror .code-language-select:focus-visible {
-  opacity: 1;
+.doc-body.ProseMirror .code-diagram-toggle:hover {
+  background: #f1f3f6;
+}
+
+/* Mermaid diagram (design.md §5.9): the code can be hidden, leaving the diagram. */
+.doc-body.ProseMirror .code-block-view.is-code-hidden > pre {
+  display: none;
+}
+
+.doc-body.ProseMirror .code-block-view.is-code-hidden .mermaid-diagram {
+  cursor: pointer;
+}
+
+.doc-body.ProseMirror .code-block-view.is-code-hidden .mermaid-diagram:hover {
+  outline: 1px dashed #b4bac3;
+  outline-offset: 4px;
+}
+
+.doc-body.ProseMirror .mermaid-error {
+  margin: 0.4em 0;
+  padding: 6px 10px;
+  border: 1px solid #ecd28f;
+  border-radius: 4px;
+  background: #fdf3d7;
+  color: #6b4a00;
+  font:
+    12px/1.5 system-ui,
+    sans-serif;
+  white-space: pre-wrap;
+}
+
+.doc-body.ProseMirror .mermaid-error[hidden],
+.doc-body.ProseMirror .code-diagram-toggle[hidden],
+.doc-body.ProseMirror .mermaid-diagram[hidden] {
+  display: none;
 }
 
 /* Cross reference dialog */
