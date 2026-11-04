@@ -15,6 +15,7 @@ import type {
   Theme,
   ThemeSettings,
 } from '../../core/model';
+import type { NumberingStartLevel } from '../../core/labels';
 import { getDefaultTheme, isCurrentBuiltin } from '../../core/theme/builtinThemes';
 
 /**
@@ -68,6 +69,8 @@ interface DocumentInfoActions {
   clearPageOverride: () => void;
   /** Depth of the table of contents for this document (overrides the theme's setting). */
   setTocDepth: (depth: ThemeSettings['tocDepth']) => void;
+  /** Heading level numbered as "1" for this document (overrides the theme's setting). */
+  setNumberingStartLevel: (level: NumberingStartLevel) => void;
 }
 
 export const useDocumentStore = create<DocumentInfo & DocumentInfoActions>()((set) => {
@@ -159,6 +162,9 @@ export const useDocumentStore = create<DocumentInfo & DocumentInfoActions>()((se
     },
     setTocDepth: (tocDepth) => {
       set((state) => ({ settingsOverride: { ...state.settingsOverride, tocDepth } }));
+    },
+    setNumberingStartLevel: (numberingStartLevel) => {
+      set((state) => ({ settingsOverride: { ...state.settingsOverride, numberingStartLevel } }));
     },
   };
 });

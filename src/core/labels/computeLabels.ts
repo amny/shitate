@@ -1,4 +1,4 @@
-import type { DocNode, DocRoot } from '../model';
+import type { DocNode, DocRoot, DocumentState, ThemeSettings } from '../model';
 
 export interface HeadingLabel {
   /** "2.1.3", or "" when the heading is not numbered (H6 / numbered=false). */
@@ -26,7 +26,27 @@ export interface Labels {
   toc: TocEntry[];
 }
 
-const NUMBERED_LEVELS = 5;
+/** Deepest numbered heading level: H6 is never numbered (design.md §5.4). */
+const LAST_NUMBERED_LEVEL = 5;
+
+export type NumberingStartLevel = NonNullable<ThemeSettings['numberingStartLevel']>;
+
+export const DEFAULT_NUMBERING_START_LEVEL: NumberingStartLevel = 1;
+
+export interface ComputeLabelsOptions {
+  /** Heading level numbered as "1" (design.md §5.4). Default: 1. */
+  startLevel?: NumberingStartLevel;
+}
+
+/** The start level in effect: the document's override, else the theme's setting, else 1. */
+export function resolveNumberingStartLevel(
+  theme: ThemeSettings,
+  override: DocumentState['settingsOverride'],
+): NumberingStartLevel {
+  return (
+    override?.numberingStartLevel ?? theme.numberingStartLevel ?? DEFAULT_NUMBERING_START_LEVEL
+  );
+}
 
 function textOf(node: DocNode): string {
   if (node.type === 'text') {
@@ -54,22 +74,26 @@ function captionOf(node: DocNode, captionType: string): string {
  * Computes heading numbers, figure / table numbers and TOC entries (design.md §5.4).
  * The single source of numbering for both the editor display and the export.
  */
-export function computeLabels(doc: DocRoot): Labels {
+export function computeLabels(
+  doc: DocRoot,
+  { startLevel = DEFAULT_NUMBERING_START_LEVEL }: ComputeLabelsOptions = {},
+): Labels {
   const labels: Labels = { headings: new Map(), figures: new Map(), tables: new Map(), toc: [] };
-  const counters = new Array<number>(NUMBERED_LEVELS).fill(0);
+  const counters = new Array<number>(LAST_NUMBERED_LEVEL - startLevel + 1).fill(0);
   let figureCount = 0;
   let tableCount = 0;
   // Level of the numbered=false heading whose sub-headings are also left unnumbered.
   let unnumberedSectionLevel: number | null = null;
 
-  const numberHeading = (level: number): string => {
+  /** `tier` is 1 for the start level, 2 for the level below it, and so on. */
+  const numberHeading = (tier: number): string => {
     // Skipped levels count as 1 so numbers never repeat (e.g. H1 then H3 -> 1.1.1).
-    for (let i = 0; i < level - 1; i++) {
+    for (let i = 0; i < tier - 1; i++) {
       if (counters[i] === 0) counters[i] = 1;
     }
-    counters[level - 1] = (counters[level - 1] ?? 0) + 1;
-    counters.fill(0, level);
-    return counters.slice(0, level).join('.');
+    counters[tier - 1] = (counters[tier - 1] ?? 0) + 1;
+    counters.fill(0, tier);
+    return counters.slice(0, tier).join('.');
   };
 
   const visit = (node: DocNode): void => {
@@ -80,12 +104,13 @@ export function computeLabels(doc: DocRoot): Labels {
           unnumberedSectionLevel = null;
         }
         const insideUnnumbered = unnumberedSectionLevel !== null;
-        if (!insideUnnumbered && node.attrs?.['numbered'] === false) {
+        // Headings above the start level and H6 are outside the numbering entirely.
+        const numberable = level >= startLevel && level <= LAST_NUMBERED_LEVEL;
+        if (numberable && !insideUnnumbered && node.attrs?.['numbered'] === false) {
           unnumberedSectionLevel = level;
         }
-        const numbered =
-          !insideUnnumbered && node.attrs?.['numbered'] !== false && level <= NUMBERED_LEVELS;
-        const number = numbered ? numberHeading(level) : '';
+        const numbered = numberable && !insideUnnumbered && node.attrs?.['numbered'] !== false;
+        const number = numbered ? numberHeading(level - startLevel + 1) : '';
         const id = idOf(node);
         const text = textOf(node);
         if (id) {

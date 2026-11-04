@@ -235,6 +235,69 @@ describe('buildExportHtml: heading numbers', () => {
   });
 });
 
+describe('buildExportHtml: numbering start level', () => {
+  const heading = (level: number, id: string, text: string) => ({
+    type: 'heading',
+    attrs: { level, id },
+    content: [{ type: 'text', text }],
+  });
+  const doc: DocRoot = {
+    type: 'doc',
+    content: [
+      { type: 'toc' },
+      heading(1, 'h-start001', '概要'),
+      heading(2, 'h-start002', '目的'),
+      heading(3, 'h-start003', '背景'),
+      {
+        type: 'paragraph',
+        content: [{ type: 'crossRef', attrs: { targetId: 'h-start003' } }],
+      },
+    ],
+  };
+  const numbersOf = (html: string) => {
+    const dom = new DOMParser().parseFromString(html, 'text/html');
+    return {
+      headings: [...dom.querySelectorAll('.doc-body :is(h1, h2, h3)')].map(
+        (h) => h.querySelector('.heading-number')?.textContent ?? null,
+      ),
+      toc: [...dom.querySelectorAll('.doc-toc .toc-item')].map(
+        (a) => a.querySelector('.toc-number')?.textContent ?? null,
+      ),
+      ref: dom.querySelector('.doc-body .xref')?.textContent ?? null,
+    };
+  };
+
+  it('numbers from the document override', () => {
+    const state: DocumentState = {
+      ...createState(doc),
+      settingsOverride: { numberingStartLevel: 2 },
+    };
+    const html = buildExportHtml(state, theme, { extensions });
+    expect(numbersOf(html)).toEqual({
+      headings: [null, '1', '1.1'],
+      toc: [null, '1', '1.1'],
+      ref: '1.1節',
+    });
+    const result = reimport(html);
+    expect(result.ok && result.kind === 'embedded' && result.data.state).toEqual(state);
+  });
+
+  it('falls back to the theme setting, then H1', () => {
+    const state = createState(doc);
+    const themed: Theme = { ...theme, settings: { ...theme.settings, numberingStartLevel: 3 } };
+    expect(numbersOf(buildExportHtml(state, themed, { extensions })).headings).toEqual([
+      null,
+      null,
+      '1',
+    ]);
+    expect(numbersOf(buildExportHtml(state, theme, { extensions })).headings).toEqual([
+      '1',
+      '1.1',
+      '1.1.1',
+    ]);
+  });
+});
+
 describe('buildExportHtml: figure and table numbers', () => {
   const caption = (type: string, value: string) => ({
     type,

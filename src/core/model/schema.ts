@@ -108,6 +108,8 @@ export const themeSettingsSchema = z.object({
   logoDataUri: z.string().startsWith('data:image/').optional(),
   copyright: z.string().optional(),
   tocDepth: tocDepthSchema,
+  /** Heading level numbered as the first tier (design.md §5.4); unset means 1. */
+  numberingStartLevel: headingLevelSchema.optional(),
   page: pageSettingsSchema,
 });
 

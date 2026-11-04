@@ -1,4 +1,5 @@
 import { Editor } from '@tiptap/core';
+import { undoDepth } from '@tiptap/pm/history';
 import type { JSONContent } from '@tiptap/core';
 import { createExtensions } from '../createEditor';
 import { getLabels, labelsPluginKey } from './labels';
@@ -67,6 +68,22 @@ describe('labels plugin', () => {
     // Its sub-headings are not numbered either, so the next H1 is 1 (design.md §5.4).
     expect(tocNumbers(editor)).toEqual([':はじめに', ':目的', ':範囲', '1:設計']);
     expect(widgetTexts(editor)).toEqual(['1']);
+  });
+
+  it('renumbers from the start level without changing the document or the history', () => {
+    const before = editor.getJSON();
+    const depth = Number(undoDepth(editor.state));
+    editor.commands.setNumberingStartLevel(2);
+    expect(tocNumbers(editor)).toEqual([':はじめに', '1:目的', '2:範囲', ':設計']);
+    expect(widgetTexts(editor)).toEqual(['1', '2']);
+    expect(editor.getJSON()).toEqual(before);
+    expect(Number(undoDepth(editor.state))).toBe(depth);
+  });
+
+  it('keeps the start level when the document changes', () => {
+    editor.commands.setNumberingStartLevel(2);
+    editor.commands.insertContentAt(editor.state.doc.content.size, heading(2, '方式'));
+    expect(tocNumbers(editor)).toEqual([':はじめに', '1:目的', '2:範囲', ':設計', '3:方式']);
   });
 
   it('never writes numbers into the document', () => {

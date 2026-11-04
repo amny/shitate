@@ -22,6 +22,7 @@ import type { Notice } from './notice';
 import { useExportDocument } from './useExportDocument';
 import { useDocumentStore } from './store/documentStore';
 import { useOpenDocument } from './useOpenDocument';
+import { useNumberingStartLevel } from './useNumberingStartLevel';
 import { useTocDepth } from './useTocDepth';
 import '../editor/editor-ui.css';
 
@@ -78,6 +79,10 @@ export function App() {
   useEffect(() => {
     editor.commands.setTocDepth(tocDepth);
   }, [editor, tocDepth]);
+  const numberingStartLevel = useNumberingStartLevel();
+  useEffect(() => {
+    editor.commands.setNumberingStartLevel(numberingStartLevel);
+  }, [editor, numberingStartLevel]);
 
   return (
     <div className="app">

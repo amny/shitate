@@ -547,6 +547,23 @@
 
 **Phase 2 完了条件：ページ番号付きの目次を持つ仕様書PDFを、任意のページサイズで出力できる。**
 
+### [x] 2-16 見出し番号の開始レベル
+- 内容：§5.4・§5.5。採番を始める見出しのレベル（H1〜H5）を文書設定パネルで選べるようにする。H1の無い文書で、H2を `1` と採番するため（ユーザー要望）。
+- 受け入れ基準：
+  - `computeLabels` の単体テスト：開始レベル2・3での番号、開始レベルより上位の見出しが採番されずカウンタに影響しないこと、`numbered=false` の配下とレベル飛ばしのルール
+  - 文書設定パネルで開始レベルを変えると、エディターの見出し番号・アウトライン・目次・相互参照の表示が変わる
+  - エクスポートHTMLの見出し番号・目次・相互参照も同じ番号になり、読み込み直すと設定が保持される
+  - 開始レベルより上位の見出しにカーソルがあるときは「見出し番号」ボタンが無効になる
+  - 未指定の既存文書は従来どおりH1から採番される（`EmbeddedData.version` は変えない）
+- 依存：2-2、2-5
+- メモ：
+  - 値は `ThemeSettings.numberingStartLevel`（任意項目。`headingLevelSchema`）。文書ごとの上書きは `settingsOverride.numberingStartLevel`、使われる値は `resolveNumberingStartLevel`（`core/labels`。上書き ＞ テーマ ＞ 1）。任意項目なので `EmbeddedData.version` は上げていない。
+  - エディターへは `setNumberingStartLevel` コマンド（`labels` プラグイン。履歴に残らないメタ情報だけのトランザクション）で渡し、値が変わったら `Labels` を再計算する。現在値は `getNumberingStartLevel` で読める（ツールバーが使う）。
+  - 開始レベルより上位の見出しに付いた `numbered=false` は無視する（その見出しはもともと採番範囲外のため、配下の採番を止めない）。ツールバーの「見出し番号」ボタンは、その見出しでは無効になり、属性を切り替えられないため。
+  - UIは文書設定パネルの「目次」セクションに「見出し番号の開始レベル」として置いた（選択肢「見出しNを「1」にする」）。
+  - 範囲外：テーマ編集画面（`ThemeSettingsForm`）での既定値の編集。テーマの値は読むが、編集UIは無い。
+  - 単体テスト：`computeLabels.test.ts`（numbering start level・resolveNumberingStartLevel）、`labels.test.ts`、`export.test.ts`（numbering start level）。E2E：`tests/e2e/numbering-start-level.spec.ts`。
+
 ---
 
 ## Phase 3：テーマ管理
