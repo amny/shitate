@@ -1,5 +1,7 @@
 import type { DocNode, DocRoot } from '../model';
-import { computeLabels, formatRef } from './computeLabels';
+import { computeLabels, formatRef, resolveNumberingStartLevel } from './computeLabels';
+import type { NumberingStartLevel } from './computeLabels';
+import { getDefaultTheme } from '../theme/builtinThemes';
 
 let sequence = 0;
 function h(level: number, text: string, attrs: Record<string, unknown> = {}): DocNode {
@@ -161,6 +163,71 @@ describe('computeLabels: heading numbers', () => {
     );
     expect(labels.toc.map((e) => e.number)).toEqual(['2']);
     expect(labels.headings.size).toBe(1);
+  });
+});
+
+describe('computeLabels: numbering start level', () => {
+  const numbersFrom = (startLevel: NumberingStartLevel, root: DocRoot) =>
+    computeLabels(root, { startLevel }).toc.map((e) => e.number);
+
+  it('numbers the start level as the first tier', () => {
+    expect(
+      numbersFrom(2, doc(h(2, 'a'), h(3, 'b'), h(4, 'c'), h(5, 'd'), h(3, 'e'), h(2, 'f'))),
+    ).toEqual(['1', '1.1', '1.1.1', '1.1.1.1', '1.2', '2']);
+    expect(numbersFrom(3, doc(h(3, 'a'), h(4, 'b'), h(5, 'c'), h(3, 'd')))).toEqual([
+      '1',
+      '1.1',
+      '1.1.1',
+      '2',
+    ]);
+  });
+
+  it('does not number headings above the start level nor let them reset the counters', () => {
+    expect(
+      numbersFrom(2, doc(h(1, 'a'), h(2, 'b'), h(3, 'c'), h(1, 'd'), h(2, 'e'), h(6, 'f'))),
+    ).toEqual(['', '1', '1.1', '', '2', '']);
+  });
+
+  it('keeps the unnumbered-section and skipped-level rules relative to the start level', () => {
+    expect(
+      numbersFrom(
+        2,
+        doc(h(3, 'a'), h(2, 'b', { numbered: false }), h(3, 'c'), h(1, 'd'), h(3, 'e'), h(2, 'f')),
+      ),
+    ).toEqual(['1.1', '', '', '', '1.2', '2']);
+  });
+
+  it('ignores numbered=false on a heading above the start level', () => {
+    expect(numbersFrom(2, doc(h(1, 'a', { numbered: false }), h(2, 'b'), h(3, 'c')))).toEqual([
+      '',
+      '1',
+      '1.1',
+    ]);
+  });
+
+  it('defaults to H1', () => {
+    expect(numbers(doc(h(1, 'a'), h(2, 'b')))).toEqual(['1', '1.1']);
+  });
+
+  it('formats cross references with the shifted number', () => {
+    const target = h(3, 'b');
+    const labels = computeLabels(doc(h(2, 'a'), target), { startLevel: 2 });
+    expect(formatRef(labels, String(target.attrs?.['id']))).toBe('1.1節');
+  });
+});
+
+describe('resolveNumberingStartLevel', () => {
+  const settings = getDefaultTheme().settings;
+
+  it('prefers the override, then the theme, then 1', () => {
+    expect(resolveNumberingStartLevel(settings, undefined)).toBe(1);
+    expect(resolveNumberingStartLevel({ ...settings, numberingStartLevel: 3 }, undefined)).toBe(3);
+    expect(
+      resolveNumberingStartLevel(
+        { ...settings, numberingStartLevel: 3 },
+        { numberingStartLevel: 2 },
+      ),
+    ).toBe(2);
   });
 });
 

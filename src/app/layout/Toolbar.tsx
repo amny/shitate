@@ -2,7 +2,7 @@ import { useEditorState } from '@tiptap/react';
 import type { Editor } from '@tiptap/react';
 import type { ReactNode } from 'react';
 import { getFileAdapter } from '../../adapters';
-import { getLabels } from '../../editor/extensions/labels';
+import { getLabels, getNumberingStartLevel } from '../../editor/extensions/labels';
 import { findToc } from '../../editor/extensions/toc';
 import {
   BulletListIcon,
@@ -39,7 +39,13 @@ interface ToolbarState {
    * Numbering of the heading at the cursor: 'on' / 'off' (its own setting), 'inherited'
    * (unnumbered because a parent heading is unnumbered), or null when it does not apply.
    */
-  headingNumbering: 'on' | 'off' | 'inherited' | null;
+  /**
+   * 'inherited': under an unnumbered heading. 'aboveStart': above the numbering start level
+   * (design.md §5.4). null: not a numberable heading.
+   */
+  headingNumbering: 'on' | 'off' | 'inherited' | 'aboveStart' | null;
+  /** The heading level numbered as "1". */
+  numberingStartLevel: HeadingLevel;
   bold: boolean;
   italic: boolean;
   underline: boolean;
@@ -64,6 +70,7 @@ function headingNumberingAt(
 ): ToolbarState['headingNumbering'] {
   // H6 is never numbered (design.md §5.4).
   if (level === undefined || level > 5) return null;
+  if (level < getNumberingStartLevel(editor.state)) return 'aboveStart';
   const attributes = editor.getAttributes('heading');
   if (attributes['numbered'] === false) return 'off';
   const id: unknown = attributes['id'];
@@ -79,6 +86,7 @@ function selectToolbarState({ editor }: { editor: Editor }): ToolbarState {
     // Headings are not allowed in table cells (design.md §5.2).
     inTableCell: editor.isActive('tableCell') || editor.isActive('tableHeader'),
     headingNumbering: headingNumberingAt(editor, level),
+    numberingStartLevel: getNumberingStartLevel(editor.state),
     bold: editor.isActive('bold'),
     italic: editor.isActive('italic'),
     underline: editor.isActive('underline'),
@@ -177,10 +185,16 @@ export function Toolbar({ editor, onRequestLink, onRequestCrossRef, onError }: T
         title={
           state.headingNumbering === 'inherited'
             ? '見出し番号（上位の見出しが採番しないため、この見出しも採番されません）'
-            : undefined
+            : state.headingNumbering === 'aboveStart'
+              ? `見出し番号（見出し${String(state.numberingStartLevel)}から採番する設定のため、この見出しは採番されません）`
+              : undefined
         }
         active={state.headingNumbering === 'on'}
-        disabled={state.headingNumbering === null || state.headingNumbering === 'inherited'}
+        disabled={
+          state.headingNumbering === null ||
+          state.headingNumbering === 'inherited' ||
+          state.headingNumbering === 'aboveStart'
+        }
         onClick={() =>
           chain()
             .updateAttributes('heading', { numbered: state.headingNumbering === 'off' })

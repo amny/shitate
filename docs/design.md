@@ -145,6 +145,7 @@ export interface ThemeSettings {
   logoDataUri?: string;        // data:image/png;base64,...
   copyright?: string;          // "© 2026 ○○株式会社"
   tocDepth: 1 | 2 | 3 | 4 | 5; // 目次に載せる深さ（既定3）
+  numberingStartLevel?: 1 | 2 | 3 | 4 | 5; // 採番を始める見出しのレベル（未指定は1。§5.4。2-16）
   page: PageSettings;          // PDFのページ設定（§10.1）
 }
 
@@ -168,6 +169,7 @@ export interface EmbeddedData {
 ```
 
 - 形式変更に備え、`version` で分岐するマイグレーション関数 `migrate(data)` を `core/import` に置く。
+- `numberingStartLevel` は任意の項目のため、`EmbeddedData.version` は上げない（未指定＝H1から採番＝従来の動作）。
 - `displayHash` は任意の項目のため、項目の無い既存データはそのまま読み込め、`EmbeddedData.version` は上げない（zod の `z.object` は未知のキーを捨てるため、追加前のアプリでも読める）。エクスポートHTMLにだけ入れ、下書き（§9.2）には入れない。
 
 ---
@@ -224,13 +226,14 @@ export interface Labels {
   tables:   Map<string, { number: number; caption: string }>;             // 表1
   toc: Array<{ id: string; level: number; number: string; text: string }>;
 }
-export function computeLabels(doc: JSONContent): Labels;
+export function computeLabels(doc: JSONContent, options?: { startLevel?: 1 | 2 | 3 | 4 | 5 }): Labels;
 export function formatRef(labels: Labels, targetId: string): string | null;
 // 見出し → "2.1節"、図 → "図3"、表 → "表2"、見つからない → null
 ```
 
 採番ルール：
 - H1〜H5 を `1` / `1.1` / … / `1.1.1.1.1` で採番する。上位レベルが進んだら下位カウンタを0に戻す。
+- 採番の開始レベル（`startLevel`、既定1）：開始レベルの見出しを1階層目として採番する（例：2なら H2 が `1`、H3 が `1.1`、H5 が `1.1.1.1`）。開始レベルより上位の見出しは採番せず、カウンタにも影響しない（H6と同じ扱い。H1 をまたいでも H2 の番号は通しで続く）。`numbered=false` の配下のルールとレベル飛ばしのルールは、開始レベルからの階層で同じように適用する（開始レベル2で文書先頭のH3は `1.1`）。値は `settingsOverride.numberingStartLevel` ＞ テーマの `numberingStartLevel` ＞ 1（`resolveNumberingStartLevel`）。2-16で追加。
 - H6 は採番せず、カウンタにも影響しない。
 - `numbered=false` の見出しは採番せず、カウンタも進めない。**その配下の見出し**（次に同じか上位のレベルの見出しが現れるまでの、より下位の見出し）も採番せず、カウンタを進めない。配下を抜けた後の見出しは、採番しない範囲が無かったものとして採番を続ける（例：文書先頭の採番しないH1「はじめに」とその下のH2は採番されず、次のH1は「1」。1.2 の後の採番しないH2の下のH3は採番されず、次のH2は「1.3」）。2-2完了後にユーザー要望で変更。
 - レベルが飛んだ場合は、飛ばしたレベルのカウンタが0なら1とみなす（例：H1「1」の直後のH3は「1.1.1」、続くH2は「1.2」。文書先頭のH2は「1.1」）。番号の重複を避けるため。
@@ -246,6 +249,7 @@ export function formatRef(labels: Labels, targetId: string): string | null;
 - 図・表番号：見出しと同じく widget デコレーションで、キャプションの先頭に `<span class="caption-number">図1</span>` / `表1` を表示する（2-3で NodeView から変更。仕組みを見出しと共通にし、番号が本文に入らないことを保証しやすくするため）。空のキャプションにはプレースホルダーを表示する。
 - crossRef：ノードデコレーションで `data-label`（`formatRef` の結果）を付け、編集UIのCSS（`::before { content: attr(data-label) }`）で表示する。`null` のときは `data-label="参照先なし"` とクラス `is-broken` を付けて警告スタイルで表示する（2-4で NodeView から変更。参照ノード自体は変わらないため NodeView は番号の変化で再描画されないが、デコレーションの変化は反映されるため）。
 - toc：NodeViewで `labels.toc` を `tocDepth` までの深さで一覧表示する。中身はエクスポートと同じ `renderTocContent`（`core/export/toc.ts`）で作る。`tocDepth` はアプリの状態（文書の上書き ＞ テーマの設定値）から `setTocDepth` コマンドでエディターに渡し、プラグインのstateに持つ。目次の内容（項目と深さ）をノードデコレーションのspecに載せ、内容が変わったときだけ再描画する。項目のクリックで、その見出しへスクロールする（`scrollToNode`。§5.8と共用）。
+- 採番の開始レベル（§5.4）は、`tocDepth` と同じく `setNumberingStartLevel` コマンド（履歴に残らないメタ情報だけのトランザクション）で `labels` プラグインに渡し、プラグインのstateに持つ。値が変わったときも `Labels` を再計算する。見出し番号の表示・アウトライン・相互参照・目次はすべてこの `Labels` を使う。エクスポートは同じ値を `computeLabels` に渡す。値は文書設定パネルの「目次」セクションの「見出し番号の開始レベル」で変え、文書ごとの上書き（`settingsOverride.numberingStartLevel`）に保存する（2-16）。
 - 目次に載せる深さは、文書設定パネルの「目次に載せる深さ」で変え、文書ごとの上書き（`settingsOverride.tocDepth`）に保存する。テーマの設定値は変えない（テーマの編集は3-1）。
 
 ### 5.6 相互参照の挿入UI

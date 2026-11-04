@@ -3,13 +3,24 @@ import type { Node as PMNode } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorState } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
-import { computeLabels, formatRef } from '../../core/labels';
-import type { Labels } from '../../core/labels';
+import { computeLabels, DEFAULT_NUMBERING_START_LEVEL, formatRef } from '../../core/labels';
+import type { Labels, NumberingStartLevel } from '../../core/labels';
+import { headingLevelSchema } from '../../core/model';
 import type { DocNode, DocRoot } from '../../core/model';
+
+declare module '@tiptap/core' {
+  interface Commands<ReturnType> {
+    labels: {
+      /** Sets the heading level numbered as "1" (not part of the document, design.md §5.5). */
+      setNumberingStartLevel: (level: NumberingStartLevel) => ReturnType;
+    };
+  }
+}
 
 interface LabelsState {
   labels: Labels;
   decorations: DecorationSet;
+  startLevel: NumberingStartLevel;
 }
 
 /** Shown for a cross reference whose target no longer exists (design.md §5.5). */
@@ -65,8 +76,8 @@ function captionDecorations(caption: PMNode, captionPos: number, number: string)
   return decorations;
 }
 
-function buildState(doc: PMNode): LabelsState {
-  const labels = computeLabels(toDocRoot(doc));
+function buildState(doc: PMNode, startLevel: NumberingStartLevel): LabelsState {
+  const labels = computeLabels(toDocRoot(doc), { startLevel });
   const decorations: Decoration[] = [];
   doc.descendants((node, pos) => {
     const id: unknown = node.attrs['id'];
@@ -123,7 +134,7 @@ function buildState(doc: PMNode): LabelsState {
         return true;
     }
   });
-  return { labels, decorations: DecorationSet.create(doc, decorations) };
+  return { labels, decorations: DecorationSet.create(doc, decorations), startLevel };
 }
 
 /** Labels of the current document (numbers, TOC entries), kept up to date by the plugin. */
@@ -135,6 +146,15 @@ export function getLabels(state: EditorState): Labels {
   return pluginState.labels;
 }
 
+/** The heading level numbered as "1", as last set by setNumberingStartLevel. */
+export function getNumberingStartLevel(state: EditorState): NumberingStartLevel {
+  const pluginState = labelsPluginKey.getState(state);
+  if (!pluginState) {
+    throw new Error('The labels plugin is not installed in this editor');
+  }
+  return pluginState.startLevel;
+}
+
 /**
  * Keeps computeLabels' result in plugin state and shows heading / figure / table numbers and
  * cross reference labels as decorations (design.md §5.5). Numbers are never written into the
@@ -142,14 +162,31 @@ export function getLabels(state: EditorState): Labels {
  */
 export const LabelsExtension = Extension.create({
   name: 'labels',
+  addCommands() {
+    return {
+      setNumberingStartLevel:
+        (level) =>
+        ({ tr, dispatch }) => {
+          if (dispatch) {
+            tr.setMeta(labelsPluginKey, level).setMeta('addToHistory', false);
+          }
+          return true;
+        },
+    };
+  },
   addProseMirrorPlugins() {
     return [
       new Plugin<LabelsState>({
         key: labelsPluginKey,
         state: {
-          init: (_config, state) => buildState(state.doc),
-          apply: (tr, value, _oldState, newState) =>
-            tr.docChanged ? buildState(newState.doc) : value,
+          init: (_config, state) => buildState(state.doc, DEFAULT_NUMBERING_START_LEVEL),
+          apply: (tr, value, _oldState, newState) => {
+            const next = headingLevelSchema.safeParse(tr.getMeta(labelsPluginKey));
+            const startLevel = next.success ? next.data : value.startLevel;
+            return tr.docChanged || startLevel !== value.startLevel
+              ? buildState(newState.doc, startLevel)
+              : value;
+          },
         },
         props: {
           decorations: (state) => labelsPluginKey.getState(state)?.decorations ?? null,

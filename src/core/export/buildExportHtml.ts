@@ -1,6 +1,6 @@
 import { generateHTML } from '@tiptap/core';
 import type { Extensions, JSONContent } from '@tiptap/core';
-import { computeLabels } from '../labels';
+import { computeLabels, resolveNumberingStartLevel } from '../labels';
 import { EMBEDDED_DATA_FORMAT, EMBEDDED_DATA_VERSION } from '../model';
 import type { DocumentState, EmbeddedData, Theme } from '../model';
 import { replaceMermaidBlocks } from './diagrams';
@@ -54,7 +54,9 @@ export function buildExportHtml(
     state,
     theme,
   };
-  const labels = computeLabels(state.doc);
+  const labels = computeLabels(state.doc, {
+    startLevel: resolveNumberingStartLevel(theme.settings, state.settingsOverride),
+  });
   // The TOC node is rendered before <main>, not inside the body (design.md §7.1).
   const { hasToc, body: bodyDoc } = splitToc(state.doc);
   const toc = hasToc
